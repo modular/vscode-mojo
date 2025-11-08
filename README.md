@@ -1,4 +1,4 @@
-# Mojo for Visual Studio Code
+# Mojo🔥 extension for Visual Studio Code
 
 [![Build extension](https://github.com/modular/mojo-vscode/actions/workflows/build.yaml/badge.svg)](https://github.com/modular/mojo-vscode/actions/workflows/build.yaml)
 
