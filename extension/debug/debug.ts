@@ -87,9 +87,14 @@ async function findSDKForDebugConfiguration(
   envManager: PythonEnvironmentManager,
 ): Promise<Optional<SDK>> {
   if (config.modularHomePath !== undefined) {
+    const homePath = config.modularHomePath.replace(/\/+$/, '');
+    const prefixPath = homePath.endsWith('/share/max')
+      ? homePath.replace(/\/share\/max$/, '')
+      : undefined;
     return envManager.createSDKFromHomePath(
       SDKKind.Custom,
-      config.modularHomePath,
+      homePath,
+      prefixPath,
     );
   }
   return envManager.getActiveSDK();
