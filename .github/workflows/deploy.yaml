@@ -45,6 +45,7 @@ jobs:
 
     outputs:
       version: ${{ steps.bump.outputs.version }}
+      commit_sha: ${{ steps.get_sha.outputs.sha }}
 
     steps:
       - name: Setup Node
@@ -74,9 +75,15 @@ jobs:
           export VERSION=$(jq -r '.version' package.json)
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
+      - name: Get new commit SHA
+        id: get_sha
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
   build:
     needs: [version]
     uses: ./.github/workflows/build.yaml
+    with:
+      ref: ${{ needs.version.outputs.commit_sha || github.sha }}
 
   publish:
     name: Publish extension
@@ -90,6 +97,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.version.outputs.commit_sha || github.sha }}
 
       - uses: ./.github/actions/setup
 
