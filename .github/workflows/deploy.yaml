@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish to marketplaces.
+        description: Whether to publish to marketplaces.
         type: boolean
         default: true
 
@@ -24,6 +24,11 @@ on:
 
       pre_release:
         description: Whether to release as a pre-release version.
+        type: boolean
+        default: false
+
+      create_release:
+        description: Whether to create a GitHub release.
         type: boolean
         default: false
 
@@ -117,6 +122,7 @@ jobs:
         run: npx ovsx publish $PUBLISH_FLAGS --packagePath "${{ steps.download.outputs.download-path }}/vscode-mojo.vsix" --skip-duplicate
 
       - name: Create release
+        if: ${{ inputs.create_release }}
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
         with:
           draft: true
