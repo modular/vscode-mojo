@@ -86,6 +86,14 @@ export class MojoLSPManager extends DisposableContext {
       }),
     );
 
+    this.pushSubscription(
+      vscode.commands.registerCommand('mojo.lsp.stop', async () => {
+        if (this.lspClient) {
+          await this.lspClient.stop();
+        }
+      }),
+    );
+
     if (
       this.extensionContext.extensionMode == vscode.ExtensionMode.Development ||
       this.extensionContext.extensionMode == vscode.ExtensionMode.Test
@@ -345,8 +353,7 @@ export class MojoLSPManager extends DisposableContext {
     );
 
     this.logger.lsp.info(
-      `Launching Language Server '${
-        initializationOptions.serverPath
+      `Launching Language Server '${initializationOptions.serverPath
       }' with options:`,
       initializationOptions.serverArgs,
     );
