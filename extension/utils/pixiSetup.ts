@@ -85,7 +85,13 @@ export async function setupWorkspaceWithPixi(
 async function isPixiInstalled(): Promise<boolean> {
     try {
         // Try to run pixie with a version or help flag
-        await execAsync('pixi --version');
+        await execAsync('pixi --version', {
+            shell: '/bin/bash',
+            env: {
+                ...process.env,
+                PATH: `${process.env.HOME}/.pixi/bin:${process.env.PATH}`
+            }
+        });
         return true;
     } catch (error) {
         return false;
@@ -111,12 +117,20 @@ async function isPixiInstalled(): Promise<boolean> {
  * ```
  */
 async function runTaskAndWait(command: string, name: string): Promise<boolean> {
+    const env = {
+        ...process.env,
+        PATH: `${process.env.HOME}/.pixi/bin:${process.env.PATH}`
+    };
     const task = new vscode.Task(
         { type: 'shell' },
         vscode.TaskScope.Workspace,
         name,
         'Mojo Extension',
-        new vscode.ShellExecution(command)
+        new vscode.ShellExecution(command, {
+            env: env,
+            executable: '/bin/bash', // Explicitly use bash
+            shellArgs: ['-c']
+        })
     );
 
     const execution = await vscode.tasks.executeTask(task);
