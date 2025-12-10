@@ -59,7 +59,7 @@ export class SDK {
     readonly visualizersPath: string,
     /// The path to the LLDB executor.
     readonly lldbPath: string,
-  ) {}
+  ) { }
 
   @Memoize()
   /// Checks if the version of LLDB shipped with this SDK supports Python scripting.
@@ -78,8 +78,7 @@ export class SDK {
         return true;
       } else {
         this.logger.info(
-          `Python scripting support in LLDB not found. The test script returned:\n${
-            stdout
+          `Python scripting support in LLDB not found. The test script returned:\n${stdout
           }\n${stderr}`,
         );
       }
@@ -313,6 +312,13 @@ export class PythonEnvironmentManager extends DisposableContext {
       visualizerPath,
       lldbPath,
     );
+  }
+
+  /// Updates the active Python environment path if the provided path differs.
+  public setPythonEnv(path: string) {
+    if (path !== this.api?.environments.getActiveEnvironmentPath().path) {
+      this.api?.environments.updateActiveEnvironmentPath(path);
+    }
   }
 
   /// Attempts to create a SDK from a home path. Returns undefined if creation failed.
