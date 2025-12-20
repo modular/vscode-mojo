@@ -149,7 +149,6 @@ export class PythonEnvironmentManager extends DisposableContext {
   private envChangeEmitter: vscode.EventEmitter<void>;
   private displayedSDKError: boolean = false;
   private lastLoadedEnv: string | undefined = undefined;
-  private activeSDK: SDK | undefined = undefined;
 
   constructor(logger: Logger, reporter: TelemetryReporter) {
     super();
@@ -179,8 +178,8 @@ export class PythonEnvironmentManager extends DisposableContext {
     }
   }
 
-  /// Finds the active SDK from the currently active Python environment, or undefined if one is not present.
-  public async findActiveSDK(): Promise<SDK | undefined> {
+  /// Load the active SDK from the currently active Python environment, or undefined if one is not present.
+  public async getActiveSDK(): Promise<SDK | undefined> {
     assert(this.api !== undefined);
     // Prioritize retrieving a monorepo SDK over querying the environment.
     const monorepoSDK = await this.tryGetMonorepoSDK();
@@ -226,15 +225,6 @@ export class PythonEnvironmentManager extends DisposableContext {
       );
       return this.createSDKFromWheelEnv(env);
     }
-  }
-
-  /// Load the active SDK from the currently active Python environment, or undefined if one is not present.
-  public async getActiveSDK(): Promise<SDK | undefined> {
-    if (this.activeSDK) {
-      return this.activeSDK;
-    }
-    this.activeSDK = await this.findActiveSDK();
-    return this.activeSDK;
   }
 
   private async displaySDKError(message: string) {
