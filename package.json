@@ -159,6 +159,12 @@
             "type": "string"
           }
         },
+        "mojo.lsp.suppress.diagnostics.in.docstring": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": false,
+          "description": "Suppress warnings and errors in docstring."
+        },
         "mojo.formatting.args": {
           "scope": "resource",
           "type": "array",
