@@ -185,6 +185,11 @@
         "title": "Restart the Mojo LSP Server"
       },
       {
+        "category": "Developer",
+        "command": "mojo.lsp.stop",
+        "title": "Stop the Mojo LSP Server"
+      },
+      {
         "category": "Mojo",
         "command": "mojo.lsp.startRecord",
         "title": "Record requests and notifications sent to the Mojo language server."
