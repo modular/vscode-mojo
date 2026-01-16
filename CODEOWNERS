@@ -1,0 +1,9 @@
+# GitHub Actions workflows and configuration
+/.github/workflows/ @modular/mojo-tooling
+/.github/actions/ @modular/mojo-tooling
+
+# Package dependencies
+/package.json @modular/mojo-tooling
+/package-lock.json @modular/mojo-tooling
+/lsp-proxy/package.json @modular/mojo-tooling
+/lsp-proxy/package-lock.json @modular/mojo-tooling
