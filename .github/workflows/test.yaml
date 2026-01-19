@@ -14,7 +14,8 @@
 name: Test extension
 
 on:
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
@@ -41,6 +42,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: ./.github/actions/setup
 
