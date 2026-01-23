@@ -61,9 +61,8 @@ export function registerFormatter(
             // document.
             const documentRange = new vscode.Range(
               document.lineAt(0).range.start,
-              document.lineAt(
-                document.lineCount - 1,
-              ).rangeIncludingLineBreak.end,
+              document.lineAt(document.lineCount - 1).rangeIncludingLineBreak
+                .end,
             );
             resolve([new vscode.TextEdit(documentRange, stdout)]);
           },

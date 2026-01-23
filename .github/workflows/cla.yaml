@@ -18,16 +18,16 @@ on:
   pull_request_target:
     types: [opened, closed, synchronize]
 
-# explicitly configure permissions, in case your GITHUB_TOKEN workflow permissions are set to read-only in repository settings
 permissions:
-  actions: write # Required to update workflow run status
   contents: read # Required to read repository code
-  pull-requests: write # Required to comment on PRs with CLA instructions
-  statuses: write # Required to set commit status checks
 
 jobs:
   CLAAssistant:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write # Required to update workflow run status
+      pull-requests: write # Required to comment on PRs with CLA instructions
+      statuses: write # Required to set commit status checks
     steps:
       - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e
         id: app-token

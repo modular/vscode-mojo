@@ -13,5 +13,5 @@ await esbuild.build({
   bundle: true,
   outfile: 'out/proxy.js',
   platform: 'node',
-  external: ['vscode'],
+  external: ['vscode', 'fsevents'],
 });
