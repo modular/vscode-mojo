@@ -10,6 +10,7 @@ This changelog relates to the VS Code Extension for the Mojo language. Changelog
 ## [Unreleased]
 
 - Added: Option to filter out diagnostics in docstrings (#38) - Thanks @mzaks!
+- Fix: Cache active SDK to avoid redundant lookups (#41)
 
 ## [26.0.3] - 2025-12-05
 
@@ -17,10 +18,10 @@ This changelog relates to the VS Code Extension for the Mojo language. Changelog
 
 ## [26.0.2] - 2025-12-03
 
-- Fix: Debugger fails to launch in some environments due to issues with `CONDA_PREFIX` (#28)
-- Fix: Incorrect install link in README (#27)
 - Change: Improvements to README (#30)
 - Change: Added `comptime` keyword syntax support (#32)
+- Fix: Debugger fails to launch in some environments due to issues with `CONDA_PREFIX` (#28)
+- Fix: Incorrect install link in README (#27)
 
 ## [26.0.1] - 2025-09-29
 
