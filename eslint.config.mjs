@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['out/**', 'lsp-proxy/out/**'],
+    ignores: ['out/**', 'lsp-proxy/out/**', '.github/**'],
   },
   eslint.configs.recommended,
   tseslint.configs.recommended,

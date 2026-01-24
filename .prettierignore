@@ -1,0 +1,7 @@
+# Build outputs
+out/
+lsp-proxy/out/
+node_modules/
+
+# GitHub Actions workflows
+.github/
