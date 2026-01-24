@@ -90,6 +90,8 @@ export class MojoLSPManager extends DisposableContext {
       vscode.commands.registerCommand('mojo.lsp.stop', async () => {
         if (this.lspClient) {
           await this.lspClient.stop();
+          // We do not set lspClient to undefined, as this would trigger 
+          // restarting the client when a new mojo file is opened.
         }
       }),
     );
