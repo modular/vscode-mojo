@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This changelog relates to the VS Code Extension for the Mojo language. Changelogs for the Mojo project can be found at: [Mojo release changelog](https://docs.modular.com/mojo/changelog)
 
-## [26.1.0] - 2026-01-23
+## [26.1.0] - 2026-01-26
 
 - Added: Option to filter out diagnostics in docstrings (#38) - Thanks @mzaks!
 - Fix: Cache active SDK to avoid redundant lookups (#41)
