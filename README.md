@@ -1,6 +1,6 @@
 # Mojo🔥 extension for Visual Studio Code
 
-[![Build extension](https://github.com/modular/mojo-vscode/actions/workflows/build.yaml/badge.svg)](https://github.com/modular/mojo-vscode/actions/workflows/build.yaml)
+[![Build extension](https://github.com/modular/mojo-vscode/actions/workflows/build.yaml/badge.svg)](https://github.com/modular/mojo-vscode/actions/workflows/build.yaml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/modular/vscode-mojo/badge)](https://scorecard.dev/viewer/?uri=github.com/modular/vscode-mojo)
 
 This VS Code extension from the Modular team adds support for the
 [Mojo programming language](https://www.modular.com/mojo).
