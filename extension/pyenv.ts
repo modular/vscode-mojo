@@ -325,6 +325,13 @@ export class PythonEnvironmentManager extends DisposableContext {
     );
   }
 
+  /// Updates the active Python environment path if the provided path differs.
+  public setPythonEnv(path: string) {
+    if (path !== this.api?.environments.getActiveEnvironmentPath().path) {
+      this.api?.environments.updateActiveEnvironmentPath(path);
+    }
+  }
+
   /// Attempts to create a SDK from a home path. Returns undefined if creation failed.
   public async createSDKFromHomePath(
     kind: SDKKind,

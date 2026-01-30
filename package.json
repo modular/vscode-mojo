@@ -200,6 +200,11 @@
         "title": "Stop recording requests and notifications sent to the Mojo language server."
       },
       {
+        "category": "Mojo",
+        "command": "mojo.init.pixi.project.nightly",
+        "title": "Setup workspace with pixi (nightly)"
+      },
+      {
         "category": "Developer",
         "command": "mojo.lsp.debug",
         "title": "Debug the Mojo LSP server"
