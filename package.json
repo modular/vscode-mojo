@@ -64,7 +64,7 @@
     "@vscode/extension-telemetry": "^0.9.7",
     "@vscode/python-extension": "^1.0.5",
     "async-mutex": "0.5.0",
-    "axios": "^1.13.2",
+    "axios": "^1.13.4",
     "chokidar": "^3.6.0",
     "fs-extra": "11.2.0",
     "ini": "4.1.1",
