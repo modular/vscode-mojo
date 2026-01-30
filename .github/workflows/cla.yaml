@@ -52,3 +52,5 @@ jobs:
           remote-organization-name: 'modular'
           remote-repository-name: 'cla'
           path-to-signatures: 'signatures/version1/cla.json'
+          # Exempt bot accounts from CLA requirements
+          allowlist: dependabot*,github-actions*
