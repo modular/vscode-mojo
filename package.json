@@ -65,7 +65,7 @@
     "@vscode/python-extension": "^1.0.5",
     "async-mutex": "0.5.0",
     "axios": "^1.13.2",
-    "chokidar": "^3.6.0",
+    "chokidar": "^5.0.0",
     "fs-extra": "11.2.0",
     "ini": "4.1.1",
     "md5": "2.3.0",
