@@ -58,7 +58,7 @@
     "prettier": "^3.3.3",
     "prettier-plugin-curly": "^0.2.1",
     "typescript": "^4.6.4",
-    "typescript-eslint": "^8.35.1"
+    "typescript-eslint": "^8.54.0"
   },
   "dependencies": {
     "@vscode/extension-telemetry": "^0.9.7",
