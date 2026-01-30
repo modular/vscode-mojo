@@ -52,7 +52,7 @@
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^3.7.1",
-    "esbuild": "^0.25.5",
+    "esbuild": "^0.27.2",
     "eslint": "^9.39.2",
     "ovsx": "^0.10.8",
     "prettier": "^3.3.3",
