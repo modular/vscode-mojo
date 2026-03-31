@@ -1,3 +1,5 @@
+/* global Buffer, process */
+
 const header = 'Content-Length: ';
 const separator = '\r\n\r\n';
 

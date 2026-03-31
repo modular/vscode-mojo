@@ -14,6 +14,9 @@
 import * as assert from 'assert';
 import * as path from 'path';
 
+// We load the compiled proxy implementation because the extension test build
+// cannot import the proxy sources directly from the referenced TS project.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { MojoLSPServer } = require('../../lsp-proxy/out/MojoLSPServer') as {
   MojoLSPServer: new (args: {
     initializationOptions: {
