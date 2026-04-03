@@ -15,7 +15,6 @@ import * as vscode from 'vscode';
 import * as ini from 'ini';
 import { DisposableContext } from './utils/disposableContext';
 import { PythonExtension, ResolvedEnvironment } from '@vscode/python-extension';
-import assert from 'assert';
 import { Logger } from './logging';
 import path from 'path';
 import * as util from 'util';
@@ -160,7 +159,15 @@ export class PythonEnvironmentManager extends DisposableContext {
   }
 
   public async init() {
-    this.api = await PythonExtension.api();
+    try {
+      this.api = await PythonExtension.api();
+    } catch (e) {
+      this.logger.warn(
+        'The Python extension is not installed. ' +
+          'Install the Python extension (ms-python.python) to enable automatic SDK discovery.',
+      );
+      return;
+    }
     this.pushSubscription(
       this.api.environments.onDidChangeActiveEnvironmentPath((p) =>
         this.handleEnvironmentChange(p.path),
@@ -181,7 +188,16 @@ export class PythonEnvironmentManager extends DisposableContext {
 
   /// Finds the active SDK from the currently active Python environment, or undefined if one is not present.
   public async findActiveSDK(): Promise<SDK | undefined> {
-    assert(this.api !== undefined);
+    if (!this.api) {
+      this.logger.error(
+        'Cannot discover SDK: the Python extension (ms-python.python) is not installed.',
+      );
+      await this.displaySDKError(
+        'The Python extension (ms-python.python) is required for automatic Mojo SDK discovery. ' +
+          'Please install it and restart the extension.',
+      );
+      return undefined;
+    }
     // Prioritize retrieving a monorepo SDK over querying the environment.
     const monorepoSDK = await this.tryGetMonorepoSDK();
 

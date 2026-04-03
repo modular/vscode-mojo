@@ -24,9 +24,6 @@
     "onUri",
     "onStartupFinished"
   ],
-  "extensionDependencies": [
-    "ms-python.python"
-  ],
   "main": "./out/extension.js",
   "scripts": {
     "vscode:prepublish": "npm run typecheck && npm run bundle",
