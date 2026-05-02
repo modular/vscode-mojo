@@ -501,6 +501,14 @@
                 "description": "Program arguments.",
                 "default": []
               },
+              "buildArgs": {
+                "type": [
+                  "array",
+                  "string"
+                ],
+                "description": "Build arguments when using `mojoFile` instead of `program`.",
+                "default": []
+              },
               "cwd": {
                 "type": "string",
                 "description": "Program working directory.",
