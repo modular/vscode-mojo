@@ -8,7 +8,7 @@ This VS Code extension from the Modular team adds support for the
 
 ## Features
 
-- Syntax highlighting for `.mojo` and `.🔥` files
+- Syntax highlighting for `.mojo` files
 - Code completion
 - Code diagnostics and quick fixes
 - Full LSP experience for doc string code blocks
@@ -21,7 +21,7 @@ This VS Code extension from the Modular team adds support for the
 
 1. [Install Mojo](https://docs.modular.com/mojo/manual/install).
 2. [Install the Mojo VS Code extension](https://marketplace.visualstudio.com/items?itemName=modular-mojotools.vscode-mojo).
-3. Open any `.mojo` or `.🔥` file and start coding.
+3. Open any `.mojo` file and start coding.
 
 ### Mojo SDK resolution
 
