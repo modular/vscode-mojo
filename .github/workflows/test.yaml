@@ -45,7 +45,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@273e4808c831936a3ce1a3080c829d9e153143d3
+        uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0
         with:
           pixi-version: v0.49.0
           run-install: false
