@@ -33,8 +33,7 @@ export class SDKStatusBar implements vscode.Disposable {
   private workspaceHasMojo: boolean | undefined = undefined;
   private onShouldRefresh: vscode.EventEmitter<void> =
     new vscode.EventEmitter();
-  readonly onRefreshRequested: vscode.Event<void> =
-    this.onShouldRefresh.event;
+  readonly onRefreshRequested: vscode.Event<void> = this.onShouldRefresh.event;
 
   constructor(showOutputCommand: string) {
     this.statusBarItem = vscode.window.createStatusBarItem(
@@ -47,9 +46,7 @@ export class SDKStatusBar implements vscode.Disposable {
 
     // Watch for mojo files being opened.
     this.disposables.push(
-      vscode.window.onDidChangeVisibleTextEditors(() =>
-        this.checkVisibility(),
-      ),
+      vscode.window.onDidChangeVisibleTextEditors(() => this.checkVisibility()),
     );
 
     // Watch for mojo files being created/deleted in the workspace.
@@ -113,8 +110,7 @@ export class SDKStatusBar implements vscode.Disposable {
       this.statusBarItem.backgroundColor = undefined;
     } else {
       this.statusBarItem.text = '$(warning) Mojo: No SDK';
-      this.statusBarItem.tooltip =
-        'No Mojo SDK detected. Click to view logs.';
+      this.statusBarItem.tooltip = 'No Mojo SDK detected. Click to view logs.';
       this.statusBarItem.backgroundColor = new vscode.ThemeColor(
         'statusBarItem.warningBackground',
       );
