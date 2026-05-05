@@ -25,6 +25,7 @@ import { RpcServer } from './server/RpcServer';
 import { Mutex } from 'async-mutex';
 import { TelemetryReporter } from './telemetry';
 import { PythonEnvironmentManager } from './pyenv';
+import { SDKStatusBar } from './statusBar';
 
 /**
  * This class provides an entry point for the Mojo extension, managing the
@@ -71,6 +72,30 @@ Activating the Mojo Extension
       );
       this.pushSubscription(this.pyenvManager);
       await this.pyenvManager.init();
+
+      // Set up the SDK status bar.
+      const showOutputCommand = 'mojo.showOutput';
+      this.pushSubscription(
+        vscode.commands.registerCommand(showOutputCommand, () => {
+          this.logger.main.show();
+        }),
+      );
+      const statusBar = new SDKStatusBar(showOutputCommand);
+      this.pushSubscription(statusBar);
+
+      const updateStatusBar = async () => {
+        statusBar.showLoading();
+        const sdk = await this.pyenvManager!.findActiveSDK();
+        statusBar.update(sdk);
+      };
+
+      this.pushSubscription(
+        statusBar.onRefreshRequested(() => updateStatusBar()),
+      );
+      this.pushSubscription(
+        this.pyenvManager.onEnvironmentChange(() => updateStatusBar()),
+      );
+      await statusBar.checkVisibility();
 
       this.pushSubscription(
         await configWatcher.activate({
