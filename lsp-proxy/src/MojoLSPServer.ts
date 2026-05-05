@@ -45,6 +45,7 @@ export class MojoLSPServer extends DisposableContext {
   private serverProcess: ChildProcess;
   private lastSentRequestId: RequestId = -1;
   private pendingRequests = new Map<RequestId, PendingRequest>();
+  private pendingPacketWrites: Promise<void> = Promise.resolve();
   /**
    * @param initializationOptions The options needed to spawn the
    *     mojo-lsp-server.
@@ -82,8 +83,12 @@ export class MojoLSPServer extends DisposableContext {
     this.pushSubscription(
       new JSONRPCStream(
         this.serverProcess.stdout!,
-        (response: JSONObject) =>
-          this.pendingRequests.get(response.id)!.responseStream.next(response),
+        (response: JSONObject) => {
+          const pendingRequest = this.pendingRequests.get(response.id);
+          if (pendingRequest !== undefined) {
+            pendingRequest.responseStream.next(response);
+          }
+        },
         (notification: JSONObject) =>
           onNotification(notification.method, notification.params),
         (request: JSONObject) =>
@@ -116,13 +121,15 @@ export class MojoLSPServer extends DisposableContext {
   ): Promise<JSONObject> {
     const request = this.wrapRequest(params, method);
     const id = request.id;
-    await this.sendPacket(request);
-
     const subject = new Subject<any>();
     this.pendingRequests.set(id, { params: params, responseStream: subject });
-    const result = (await firstValueFrom(subject)).result;
-    this.pendingRequests.delete(id);
-    return result;
+    try {
+      await this.sendPacket(request);
+      const result = (await firstValueFrom(subject)).result;
+      return result;
+    } finally {
+      this.pendingRequests.delete(id);
+    }
   }
 
   /**
@@ -131,7 +138,7 @@ export class MojoLSPServer extends DisposableContext {
    */
   public sendNotification<T>(params: T, method: string): void {
     const notification = this.wrapNotification(params, method);
-    this.sendPacket(notification);
+    void this.sendPacket(notification);
   }
 
   /**
@@ -140,12 +147,12 @@ export class MojoLSPServer extends DisposableContext {
    */
   public sendResponse(id: any, result: unknown): void {
     const response = this.wrapResponse(id, result);
-    this.sendPacket(response);
+    void this.sendPacket(response);
   }
 
   public sendError(id: any, error: unknown): void {
     const response = this.wrapResponse(id, undefined, error);
-    this.sendPacket(response);
+    void this.sendPacket(response);
   }
 
   /**
@@ -163,12 +170,17 @@ export class MojoLSPServer extends DisposableContext {
    */
   private async sendPacket<T>(packet: T): Promise<void> {
     const payload = Buffer.from(JSON.stringify(packet));
-    return new Promise((resolve, _reject) => {
-      return this.serverProcess.stdin?.write(
-        `${protocolHeader}${payload.length}${protocolLineSeparator}${payload}`,
-        () => resolve(),
-      );
-    });
+    const queuedWrite = this.pendingPacketWrites.then(
+      () =>
+        new Promise<void>((resolve) => {
+          this.serverProcess.stdin?.write(
+            `${protocolHeader}${payload.length}${protocolLineSeparator}${payload}`,
+            () => resolve(),
+          );
+        }),
+    );
+    this.pendingPacketWrites = queuedWrite.catch(() => {});
+    return queuedWrite;
   }
 
   /**
