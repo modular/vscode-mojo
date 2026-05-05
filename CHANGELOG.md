@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This changelog relates to the VS Code Extension for the Mojo language. Changelogs for the Mojo project can be found at: [Mojo release changelog](https://docs.modular.com/mojo/changelog)
 
+## [26.3.0] - 2026-05-05
+
+- Added: SDK status bar item that shows the detected Mojo SDK version, or a clickable warning if no SDK was found (#152)
+- Change: Updated function modifier syntax from `owned` to `var` (#117)
+- Fix: Allow `mojo.lsp.includeDirs` to be set at workspace level (#145)
+- Fix: Add `buildArgs` to `mojo-lldb` debug configuration schema (#146)
+
 ## [26.2.0] - 2026-01-27
 
 - Added: New command that stops the LSP server (#36) - Thanks @mzaks!
