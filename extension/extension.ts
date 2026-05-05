@@ -25,6 +25,7 @@ import { RpcServer } from './server/RpcServer';
 import { Mutex } from 'async-mutex';
 import { TelemetryReporter } from './telemetry';
 import { PythonEnvironmentManager } from './pyenv';
+import { setupWorkspaceWithPixi } from './utils/pixiSetup';
 
 /**
  * This class provides an entry point for the Mojo extension, managing the
@@ -83,6 +84,15 @@ Activating the Mojo Extension
           // Dispose and reactivate the context.
           await this.activate(/*reloading=*/ true);
         }),
+      );
+
+      this.pushSubscription(
+        vscode.commands.registerCommand(
+          'mojo.init.pixi.project.nightly',
+          async () => {
+            await setupWorkspaceWithPixi(logger, this.pyenvManager);
+          },
+        ),
       );
 
       // Initialize the formatter.
