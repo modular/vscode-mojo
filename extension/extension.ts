@@ -137,7 +137,7 @@ Activating the Mojo Extension
         this.pyenvManager,
         this.extensionContext,
         this.logger,
-        this.reporter,
+        statusBar,
       );
       await this.lspManager.activate();
       this.pushSubscription(this.lspManager);
