@@ -29,6 +29,11 @@ The extension relies on the Python extension for locating your Python
 environment. In some cases, this appears to default to your globally-installed
 environment, even when a virtual environment exists.
 
+When the extension detects a Mojo project (a workspace containing `.mojo`
+files, or with a `.mojo` file open), the SDK status appears in the bottom-left
+status bar, showing details of the detected SDK or a clickable notice if no
+SDK was detected.
+
 If the Mojo extension cannot find your SDK installation, try invoking the
 `Python: Select Interpreter` command and selecting your virtual
 environment.
