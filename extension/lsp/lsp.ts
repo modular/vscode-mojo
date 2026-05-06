@@ -264,15 +264,8 @@ export class MojoLSPManager extends DisposableContext {
 
     // Configure the client options.
     const clientOptions: vscodelc.LanguageClientOptions = {
-      // The current selection mechanism indicates all documents to be served
-      // by the same single LSP Server. This wouldn't work if at some point
-      // we support multiple SDKs running at once, for which we'd need a more
-      // flexible way to manage LSP Servers than `vscodelc`. Two options might
-      // be feasible:
-      // - Fork/contribute `vscodelc` and allow for a more customizable selection logic.
-      // - Do the selection within the proxy, which would be "easy" to implement
-      //   if the proxy is restarted with the new correct info whenever a new SDK is
-      //   identified.
+      // All Mojo documents are served by a single language server; multiple
+      // SDKs running concurrently is not supported.
       documentSelector: [
         {
           language: 'mojo',

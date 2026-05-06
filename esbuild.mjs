@@ -7,11 +7,3 @@ await esbuild.build({
   platform: 'node',
   external: ['vscode'],
 });
-
-await esbuild.build({
-  entryPoints: ['lsp-proxy/src/proxy.ts'],
-  bundle: true,
-  outfile: 'out/proxy.js',
-  platform: 'node',
-  external: ['vscode', 'fsevents'],
-});

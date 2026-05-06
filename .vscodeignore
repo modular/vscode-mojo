@@ -3,8 +3,6 @@
 .gitignore
 .github/**
 fixtures/
-lsp-proxy/**
-!lsp-proxy/out/**
 extension/**
 eslint.config.mjs
 CONTRIBUTING.md
