@@ -86,7 +86,11 @@ Activating the Mojo Extension
       const updateStatusBar = async () => {
         statusBar.showLoading();
         const sdk = await this.pyenvManager!.findActiveSDK();
-        statusBar.update(sdk);
+        const reason =
+          !sdk && !this.pyenvManager!.isPythonExtensionAvailable()
+            ? 'no-python-extension'
+            : undefined;
+        statusBar.update(sdk, reason);
       };
 
       this.pushSubscription(

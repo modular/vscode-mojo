@@ -25,18 +25,21 @@ This VS Code extension from the Modular team adds support for the
 
 ### Mojo SDK resolution
 
-The extension relies on the Python extension for locating your Python
-environment. In some cases, this appears to default to your globally-installed
-environment, even when a virtual environment exists.
-
 When the extension detects a Mojo project (a workspace containing `.mojo`
 files, or with a `.mojo` file open), the SDK status appears in the bottom-left
 status bar, showing details of the detected SDK or a clickable notice if no
 SDK was detected.
 
+To discover SDKs installed in pixi or wheel-based Python environments, the
+extension uses the [Python extension for VS
+Code](https://marketplace.visualstudio.com/items?itemName=ms-python.python).
+If the Python extension is not installed, the status bar will prompt you to
+install it; clicking the prompt opens it in the marketplace.
+
 If the Mojo extension cannot find your SDK installation, try invoking the
-`Python: Select Interpreter` command and selecting your virtual
-environment.
+`Python: Select Interpreter` command and selecting the environment that
+contains your Mojo SDK. In some cases, the Python extension defaults to your
+globally-installed environment even when a workspace-local one exists.
 
 ## Debugger
 

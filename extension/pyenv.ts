@@ -159,13 +159,29 @@ export class PythonEnvironmentManager extends DisposableContext {
   }
 
   public async init() {
-    try {
-      this.api = await PythonExtension.api();
-    } catch (e) {
+    await this.tryInitApi();
+    // Watch for the Python extension being installed/enabled mid-session so
+    // we can pick it up without requiring a window reload.
+    this.pushSubscription(
+      vscode.extensions.onDidChange(() => this.handleExtensionChange()),
+    );
+  }
+
+  private async tryInitApi() {
+    if (this.api) {
+      return;
+    }
+    if (!vscode.extensions.getExtension('ms-python.python')) {
       this.logger.warn(
         'The Python extension is not installed. ' +
           'Install the Python extension (ms-python.python) to enable automatic SDK discovery.',
       );
+      return;
+    }
+    try {
+      this.api = await PythonExtension.api();
+    } catch (e) {
+      this.logger.warn('Failed to load the Python extension API:', e);
       return;
     }
     this.pushSubscription(
@@ -173,6 +189,24 @@ export class PythonEnvironmentManager extends DisposableContext {
         this.handleEnvironmentChange(p.path),
       ),
     );
+  }
+
+  private async handleExtensionChange() {
+    if (this.api) {
+      return;
+    }
+    if (!vscode.extensions.getExtension('ms-python.python')) {
+      return;
+    }
+    this.logger.info(
+      'Python extension became available, initializing SDK discovery.',
+    );
+    await this.tryInitApi();
+    if (this.api) {
+      // Reset error gating and notify subscribers so the status bar refreshes.
+      this.displayedSDKError = false;
+      this.envChangeEmitter.fire();
+    }
   }
 
   private async handleEnvironmentChange(newEnv: string) {
@@ -186,19 +220,16 @@ export class PythonEnvironmentManager extends DisposableContext {
     }
   }
 
+  /// Whether the Python extension API is available. Used by the status bar to
+  /// distinguish "no SDK found" from "Python extension not installed".
+  public isPythonExtensionAvailable(): boolean {
+    return this.api !== undefined;
+  }
+
   /// Finds the active SDK from the currently active Python environment, or undefined if one is not present.
   public async findActiveSDK(): Promise<SDK | undefined> {
-    if (!this.api) {
-      this.logger.error(
-        'Cannot discover SDK: the Python extension (ms-python.python) is not installed.',
-      );
-      await this.displaySDKError(
-        'The Python extension (ms-python.python) is required for automatic Mojo SDK discovery. ' +
-          'Please install it and restart the extension.',
-      );
-      return undefined;
-    }
     // Prioritize retrieving a monorepo SDK over querying the environment.
+    // This path doesn't require the Python extension.
     const monorepoSDK = await this.tryGetMonorepoSDK();
 
     if (monorepoSDK) {
@@ -206,6 +237,13 @@ export class PythonEnvironmentManager extends DisposableContext {
         'Monorepo SDK found, prioritizing that over Python environment.',
       );
       return monorepoSDK;
+    }
+
+    if (!this.api) {
+      this.logger.warn(
+        'Cannot discover SDK: the Python extension (ms-python.python) is not installed.',
+      );
+      return undefined;
     }
 
     const envPath = this.api.environments.getActiveEnvironmentPath();
