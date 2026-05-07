@@ -21,5 +21,6 @@ export default defineConfig([
     label: 'pixi',
     workspaceFolder: 'fixtures/pixi-workspace/',
     files: 'out/**/*.test.pixi.js',
+    installExtensions: ['ms-python.python'],
   },
 ]);

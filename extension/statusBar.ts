@@ -26,16 +26,20 @@ function editorHasMojoFile(): boolean {
   );
 }
 
+export type SDKMissingReason = 'no-python-extension' | 'invalid-sdk-override';
+
 export class SDKStatusBar implements vscode.Disposable {
   private statusBarItem: vscode.StatusBarItem;
   private disposables: vscode.Disposable[] = [];
   private visible = false;
   private workspaceHasMojo: boolean | undefined = undefined;
+  private readonly showOutputCommand: string;
   private onShouldRefresh: vscode.EventEmitter<void> =
     new vscode.EventEmitter();
   readonly onRefreshRequested: vscode.Event<void> = this.onShouldRefresh.event;
 
   constructor(showOutputCommand: string) {
+    this.showOutputCommand = showOutputCommand;
     this.statusBarItem = vscode.window.createStatusBarItem(
       'mojo-sdk-status',
       vscode.StatusBarAlignment.Left,
@@ -99,7 +103,7 @@ export class SDKStatusBar implements vscode.Disposable {
     this.statusBarItem.backgroundColor = undefined;
   }
 
-  update(sdk: SDK | undefined) {
+  update(sdk: SDK | undefined, reason?: SDKMissingReason) {
     if (sdk) {
       const version = sdk.version.replace(/^mojo\s*/i, '').trim();
       const kindLabel = SDK_KIND_LABELS[sdk.kind];
@@ -108,12 +112,43 @@ export class SDKStatusBar implements vscode.Disposable {
         `**Mojo SDK** (${kindLabel})\n\nVersion: ${version}\n\nPath: ${sdk.mojoPath}`,
       );
       this.statusBarItem.backgroundColor = undefined;
+      this.statusBarItem.command = this.showOutputCommand;
+    } else if (reason === 'no-python-extension') {
+      this.statusBarItem.text = '$(warning) Mojo: Install Python extension';
+      this.statusBarItem.tooltip = new vscode.MarkdownString(
+        'The Python extension (`ms-python.python`) is required to discover ' +
+          'Mojo SDKs in pixi or wheel environments.\n\nClick to open it in the marketplace.',
+      );
+      this.statusBarItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.warningBackground',
+      );
+      this.statusBarItem.command = {
+        command: 'extension.open',
+        arguments: ['ms-python.python'],
+        title: 'Open Python extension in marketplace',
+      };
+    } else if (reason === 'invalid-sdk-override') {
+      this.statusBarItem.text = '$(error) Mojo: Invalid SDK override path';
+      this.statusBarItem.tooltip = new vscode.MarkdownString(
+        'The `mojo.sdk.path` setting is set but does not point to a valid ' +
+          'Mojo SDK. The extension will not fall back to other detection ' +
+          'while this override is set.\n\nClick to open the setting.',
+      );
+      this.statusBarItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.errorBackground',
+      );
+      this.statusBarItem.command = {
+        command: 'workbench.action.openSettings',
+        arguments: ['mojo.sdk.path'],
+        title: 'Open Mojo SDK path setting',
+      };
     } else {
       this.statusBarItem.text = '$(warning) Mojo: No SDK';
       this.statusBarItem.tooltip = 'No Mojo SDK detected. Click to view logs.';
       this.statusBarItem.backgroundColor = new vscode.ThemeColor(
         'statusBarItem.warningBackground',
       );
+      this.statusBarItem.command = this.showOutputCommand;
     }
   }
 

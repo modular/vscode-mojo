@@ -25,18 +25,52 @@ This VS Code extension from the Modular team adds support for the
 
 ### Mojo SDK resolution
 
-The extension relies on the Python extension for locating your Python
-environment. In some cases, this appears to default to your globally-installed
-environment, even when a virtual environment exists.
-
 When the extension detects a Mojo project (a workspace containing `.mojo`
 files, or with a `.mojo` file open), the SDK status appears in the bottom-left
 status bar, showing details of the detected SDK or a clickable notice if no
 SDK was detected.
 
+The extension resolves the active SDK in this priority order:
+
+1. **`mojo.sdk.path` setting** — if set, the extension uses this path as an
+   explicit override and does not fall back to auto-detection. See below.
+2. **Monorepo SDK** — a `.derived/` directory in the open workspace folder.
+3. **Python environment** — discovered via the [Python extension for VS
+   Code](https://marketplace.visualstudio.com/items?itemName=ms-python.python),
+   used to locate SDKs installed in pixi or wheel-based environments.
+
+If the Python extension is not installed, the status bar will prompt you to
+install it; clicking the prompt opens it in the marketplace.
+
+#### `mojo.sdk.path` override
+
+For environments where the Python extension is unavailable or auto-detection
+picks the wrong environment, you can set `mojo.sdk.path` to point at a Mojo
+SDK directly. The setting is available in both the Settings UI and
+`settings.json`, and can be set at either user or workspace scope — workspace
+scope is usually the right choice, since different projects typically use
+different SDKs.
+
+The value must be an absolute path to an environment root:
+
+- **For pixi or conda installs**, point to the environment root that contains
+  `share/max/modular.cfg` — for example,
+  `/path/to/workspace/.pixi/envs/default`.
+- **For wheel installs**, point to the environment root that contains
+  `bin/mojo` and `lib/python*/site-packages/modular/` — for example,
+  `/path/to/.venv`.
+
+When set, this override beats every other detection source. If the path is
+invalid, the extension will surface an error in the status bar rather than
+silently falling back to auto-detection.
+
+#### Troubleshooting
+
 If the Mojo extension cannot find your SDK installation, try invoking the
-`Python: Select Interpreter` command and selecting your virtual
-environment.
+`Python: Select Interpreter` command and selecting the environment that
+contains your Mojo SDK. In some cases, the Python extension defaults to your
+globally-installed environment even when a workspace-local one exists. If
+that doesn't help, set `mojo.sdk.path` directly.
 
 ## Debugger
 

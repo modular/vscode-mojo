@@ -15,7 +15,6 @@ import * as vscode from 'vscode';
 import * as ini from 'ini';
 import { DisposableContext } from './utils/disposableContext';
 import { PythonExtension, ResolvedEnvironment } from '@vscode/python-extension';
-import assert from 'assert';
 import { Logger } from './logging';
 import path from 'path';
 import * as util from 'util';
@@ -25,7 +24,8 @@ import {
 } from 'child_process';
 import { Memoize } from 'typescript-memoize';
 import { TelemetryReporter } from './telemetry';
-import { fileExists } from './utils/files';
+import { directoryExists, fileExists } from './utils/files';
+import * as config from './utils/config';
 const execFile = util.promisify(callbackExecFile);
 const exec = util.promisify(callbackExec);
 
@@ -141,6 +141,8 @@ class HomeSDK extends SDK {
   }
 }
 
+export type OverridePathState = 'unset' | 'valid' | 'invalid';
+
 export class PythonEnvironmentManager extends DisposableContext {
   private api: PythonExtension | undefined = undefined;
   private logger: Logger;
@@ -150,6 +152,7 @@ export class PythonEnvironmentManager extends DisposableContext {
   private displayedSDKError: boolean = false;
   private lastLoadedEnv: string | undefined = undefined;
   private activeSDK: SDK | undefined = undefined;
+  private overridePathState: OverridePathState = 'unset';
 
   constructor(logger: Logger, reporter: TelemetryReporter) {
     super();
@@ -160,12 +163,54 @@ export class PythonEnvironmentManager extends DisposableContext {
   }
 
   public async init() {
-    this.api = await PythonExtension.api();
+    await this.tryInitApi();
+    // Watch for the Python extension being installed/enabled mid-session so
+    // we can pick it up without requiring a window reload.
+    this.pushSubscription(
+      vscode.extensions.onDidChange(() => this.handleExtensionChange()),
+    );
+  }
+
+  private async tryInitApi() {
+    if (this.api) {
+      return;
+    }
+    if (!vscode.extensions.getExtension('ms-python.python')) {
+      this.logger.warn(
+        'The Python extension is not installed. ' +
+          'Install the Python extension (ms-python.python) to enable automatic SDK discovery.',
+      );
+      return;
+    }
+    try {
+      this.api = await PythonExtension.api();
+    } catch (e) {
+      this.logger.warn('Failed to load the Python extension API:', e);
+      return;
+    }
     this.pushSubscription(
       this.api.environments.onDidChangeActiveEnvironmentPath((p) =>
         this.handleEnvironmentChange(p.path),
       ),
     );
+  }
+
+  private async handleExtensionChange() {
+    if (this.api) {
+      return;
+    }
+    if (!vscode.extensions.getExtension('ms-python.python')) {
+      return;
+    }
+    this.logger.info(
+      'Python extension became available, initializing SDK discovery.',
+    );
+    await this.tryInitApi();
+    if (this.api) {
+      // Reset error gating and notify subscribers so the status bar refreshes.
+      this.displayedSDKError = false;
+      this.envChangeEmitter.fire();
+    }
   }
 
   private async handleEnvironmentChange(newEnv: string) {
@@ -179,10 +224,35 @@ export class PythonEnvironmentManager extends DisposableContext {
     }
   }
 
-  /// Finds the active SDK from the currently active Python environment, or undefined if one is not present.
+  /// Whether the Python extension API is available. Used by the status bar to
+  /// distinguish "no SDK found" from "Python extension not installed".
+  public isPythonExtensionAvailable(): boolean {
+    return this.api !== undefined;
+  }
+
+  /// State of the `mojo.sdk.path` override setting. Used by the status bar to
+  /// distinguish "user set an invalid override path" from other failure modes.
+  public getOverridePathState(): OverridePathState {
+    return this.overridePathState;
+  }
+
+  /// Finds the active SDK, in priority order:
+  /// 1. `mojo.sdk.path` override (if set; fails loudly without falling back)
+  /// 2. Monorepo `.derived/` SDK
+  /// 3. SDK from the active Python extension environment
   public async findActiveSDK(): Promise<SDK | undefined> {
-    assert(this.api !== undefined);
-    // Prioritize retrieving a monorepo SDK over querying the environment.
+    // 1. User-supplied override path beats every other source. If it's set
+    // but doesn't resolve, do NOT fall back — that would silently violate
+    // the override semantics. The status bar surfaces the failure instead.
+    const overrideSDK = await this.tryGetOverrideSDK();
+    if (overrideSDK) {
+      return overrideSDK;
+    }
+    if (this.overridePathState === 'invalid') {
+      return undefined;
+    }
+
+    // 2. Monorepo SDK — works without the Python extension.
     const monorepoSDK = await this.tryGetMonorepoSDK();
 
     if (monorepoSDK) {
@@ -190,6 +260,13 @@ export class PythonEnvironmentManager extends DisposableContext {
         'Monorepo SDK found, prioritizing that over Python environment.',
       );
       return monorepoSDK;
+    }
+
+    if (!this.api) {
+      this.logger.warn(
+        'Cannot discover SDK: the Python extension (ms-python.python) is not installed.',
+      );
+      return undefined;
     }
 
     const envPath = this.api.environments.getActiveEnvironmentPath();
@@ -255,11 +332,28 @@ export class PythonEnvironmentManager extends DisposableContext {
   private async createSDKFromWheelEnv(
     env: ResolvedEnvironment,
   ): Promise<SDK | undefined> {
-    const binPath = path.join(env.executable.sysPrefix, 'bin');
-    const libPath = path.join(
+    return this.createSDKFromWheelLayout(
       env.executable.sysPrefix,
+      env.version!.major,
+      env.version!.minor,
+      SDKKind.Environment,
+    );
+  }
+
+  /// Create an SDK from a wheel-style layout rooted at `sysPrefix`, given
+  /// a known Python major/minor version. Used both for Python-extension envs
+  /// and user-supplied override paths.
+  private async createSDKFromWheelLayout(
+    sysPrefix: string,
+    pythonMajor: number,
+    pythonMinor: number,
+    kind: SDKKind,
+  ): Promise<SDK | undefined> {
+    const binPath = path.join(sysPrefix, 'bin');
+    const libPath = path.join(
+      sysPrefix,
       'lib',
-      `python${env.version!.major}.${env.version!.minor}`,
+      `python${pythonMajor}.${pythonMinor}`,
       'site-packages',
       'modular',
       'lib',
@@ -313,7 +407,7 @@ export class PythonEnvironmentManager extends DisposableContext {
     const versionResult = await exec(`"${mojoPath}" --version`);
     return new SDK(
       this.logger,
-      SDKKind.Environment,
+      kind,
       versionResult.stdout,
       lspPath,
       mblackPath,
@@ -396,6 +490,86 @@ export class PythonEnvironmentManager extends DisposableContext {
       this.logger.error('Error creating SDK from modular.cfg', e);
       return undefined;
     }
+  }
+
+  /// Attempt to load an SDK from the user-supplied `mojo.sdk.path` setting.
+  /// Updates `overridePathState` as a side effect so callers can distinguish
+  /// "no override set" from "override set but unusable".
+  private async tryGetOverrideSDK(): Promise<SDK | undefined> {
+    const overridePath = config.get<string>('sdk.path', undefined)?.trim();
+    if (!overridePath) {
+      this.overridePathState = 'unset';
+      return undefined;
+    }
+
+    this.logger.info(`Loading SDK from override path: ${overridePath}`);
+
+    if (!(await directoryExists(overridePath))) {
+      this.logger.error(
+        `Override path '${overridePath}' does not exist or is not a directory.`,
+      );
+      this.overridePathState = 'invalid';
+      return undefined;
+    }
+
+    // Try the conda/pixi layout first: <override>/share/max/modular.cfg
+    const homePath = path.join(overridePath, 'share', 'max');
+    if (await fileExists(path.join(homePath, 'modular.cfg'))) {
+      const sdk = await this.createSDKFromHomePath(
+        SDKKind.Custom,
+        homePath,
+        overridePath,
+      );
+      this.overridePathState = sdk ? 'valid' : 'invalid';
+      return sdk;
+    }
+
+    // Fall back to the wheel layout: <override>/lib/python<X>.<Y>/site-packages/modular/...
+    const pythonVersion = await this.detectPythonVersion(overridePath);
+    if (pythonVersion) {
+      const [major, minor] = pythonVersion;
+      const sdk = await this.createSDKFromWheelLayout(
+        overridePath,
+        major,
+        minor,
+        SDKKind.Custom,
+      );
+      this.overridePathState = sdk ? 'valid' : 'invalid';
+      return sdk;
+    }
+
+    this.logger.error(
+      `Override path '${overridePath}' contains neither a 'share/max/modular.cfg' file nor a 'lib/python*' directory.`,
+    );
+    this.overridePathState = 'invalid';
+    return undefined;
+  }
+
+  /// Find a `python<major>.<minor>` directory under `<root>/lib`, returning
+  /// the parsed version. Used to resolve wheel-style install paths whose
+  /// Python version we can't query directly (no Python extension available).
+  private async detectPythonVersion(
+    root: string,
+  ): Promise<[number, number] | undefined> {
+    const libDir = path.join(root, 'lib');
+    let entries: [string, vscode.FileType][];
+    try {
+      entries = await vscode.workspace.fs.readDirectory(
+        vscode.Uri.file(libDir),
+      );
+    } catch {
+      return undefined;
+    }
+    for (const [name, type] of entries) {
+      if (!(type & vscode.FileType.Directory)) {
+        continue;
+      }
+      const match = name.match(/^python(\d+)\.(\d+)$/);
+      if (match) {
+        return [parseInt(match[1], 10), parseInt(match[2], 10)];
+      }
+    }
+    return undefined;
   }
 
   /// Attempt to load a monorepo SDK from the currently open workspace folder.

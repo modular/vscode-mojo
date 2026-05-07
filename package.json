@@ -24,9 +24,6 @@
     "onUri",
     "onStartupFinished"
   ],
-  "extensionDependencies": [
-    "ms-python.python"
-  ],
   "main": "./out/extension.js",
   "scripts": {
     "vscode:prepublish": "npm run typecheck && npm run bundle",
@@ -175,6 +172,12 @@
           "type": "boolean",
           "default": false,
           "description": "Whether to focus on the terminal used by the `Mojo: Run Mojo File` command or on the editor after launch."
+        },
+        "mojo.sdk.path": {
+          "scope": "window",
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Absolute path to a Mojo SDK environment root. When set, this overrides all auto-detection (including the monorepo `.derived/` SDK and any environment selected via the Python extension) and will not fall back to auto-detection if invalid.\n\n**For pixi or conda installs**, point to the environment root that contains `share/max/modular.cfg` — for example, `/path/to/workspace/.pixi/envs/default`.\n\n**For wheel installs**, point to the environment root that contains `bin/mojo` and `lib/python*/site-packages/modular/` — for example, `/path/to/.venv`."
         }
       }
     },
