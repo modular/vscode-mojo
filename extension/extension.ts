@@ -86,10 +86,14 @@ Activating the Mojo Extension
       const updateStatusBar = async () => {
         statusBar.showLoading();
         const sdk = await this.pyenvManager!.findActiveSDK();
-        const reason =
-          !sdk && !this.pyenvManager!.isPythonExtensionAvailable()
-            ? 'no-python-extension'
-            : undefined;
+        let reason;
+        if (!sdk) {
+          if (this.pyenvManager!.getOverridePathState() === 'invalid') {
+            reason = 'invalid-sdk-override' as const;
+          } else if (!this.pyenvManager!.isPythonExtensionAvailable()) {
+            reason = 'no-python-extension' as const;
+          }
+        }
         statusBar.update(sdk, reason);
       };
 
@@ -103,7 +107,7 @@ Activating the Mojo Extension
 
       this.pushSubscription(
         await configWatcher.activate({
-          settings: ['SDK.additionalSDKs'],
+          settings: ['sdk.path'],
         }),
       );
 
