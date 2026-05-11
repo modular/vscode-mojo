@@ -189,8 +189,7 @@ export class SDKStatusBar implements vscode.Disposable {
         break;
       default:
         this.lspStatusBarItem.text = '$(circle-slash) Mojo LSP';
-        this.lspStatusBarItem.tooltip =
-          'Mojo language server has not started. Click to restart.';
+        this.lspStatusBarItem.tooltip = 'Mojo language server has not started.';
         this.lspStatusBarItem.backgroundColor = warningBg;
         break;
     }
