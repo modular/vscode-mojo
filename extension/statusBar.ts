@@ -45,7 +45,7 @@ export class SDKStatusBar implements vscode.Disposable {
     this.statusBarItem = vscode.window.createStatusBarItem(
       'mojo-sdk-status',
       vscode.StatusBarAlignment.Left,
-      50,
+      66,
     );
     this.statusBarItem.name = 'Mojo SDK';
     this.statusBarItem.command = showOutputCommand;
@@ -53,7 +53,7 @@ export class SDKStatusBar implements vscode.Disposable {
     this.lspStatusBarItem = vscode.window.createStatusBarItem(
       'mojo-lsp-status',
       vscode.StatusBarAlignment.Left,
-      49,
+      65,
     );
     this.lspStatusBarItem.name = 'Mojo LSP';
     this.lspStatusBarItem.command = 'mojo.lsp.restart';
