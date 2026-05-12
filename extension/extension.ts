@@ -15,7 +15,6 @@ import * as vscode from 'vscode';
 
 import { Logger, LogLevel } from './logging';
 import { MojoLSPManager } from './lsp/lsp';
-import * as configWatcher from './utils/configWatcher';
 import { DisposableContext } from './utils/disposableContext';
 import { registerFormatter } from './formatter';
 import { activateRunCommands } from './commands/run';
@@ -105,9 +104,13 @@ Activating the Mojo Extension
       );
       await statusBar.checkVisibility();
 
+      // Surface SDK detection as an explicit command. Bound to the SDK status
+      // bar in the invalid-override state so the user can retry detection
+      // after fixing the underlying problem (e.g., creating the env they
+      // pointed `mojo.sdk.path` at).
       this.pushSubscription(
-        await configWatcher.activate({
-          settings: ['sdk.path'],
+        vscode.commands.registerCommand('mojo.sdk.refresh', () => {
+          this.pyenvManager?.refresh();
         }),
       );
 

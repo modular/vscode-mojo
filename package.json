@@ -219,6 +219,11 @@
       },
       {
         "category": "Mojo",
+        "command": "mojo.sdk.refresh",
+        "title": "Refresh SDK Detection"
+      },
+      {
+        "category": "Mojo",
         "command": "mojo.file.run",
         "icon": "$(play)",
         "title": "Run Mojo File"

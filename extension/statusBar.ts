@@ -145,16 +145,14 @@ export class SDKStatusBar implements vscode.Disposable {
       this.statusBarItem.tooltip = new vscode.MarkdownString(
         'The `mojo.sdk.path` setting is set but does not point to a valid ' +
           'Mojo SDK. The extension will not fall back to other detection ' +
-          'while this override is set.\n\nClick to open the setting.',
+          'while this override is set.\n\nClick to retry detection (useful ' +
+          'if you have just finished creating the environment), or edit the ' +
+          '`mojo.sdk.path` setting to change the path.',
       );
       this.statusBarItem.backgroundColor = new vscode.ThemeColor(
         'statusBarItem.errorBackground',
       );
-      this.statusBarItem.command = {
-        command: 'workbench.action.openSettings',
-        arguments: ['mojo.sdk.path'],
-        title: 'Open Mojo SDK path setting',
-      };
+      this.statusBarItem.command = 'mojo.sdk.refresh';
     } else {
       this.statusBarItem.text = '$(warning) Mojo: No SDK';
       this.statusBarItem.tooltip = 'No Mojo SDK detected. Click to view logs.';
