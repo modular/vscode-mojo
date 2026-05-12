@@ -13,36 +13,15 @@
 
 import * as vscode from 'vscode';
 import * as vscodelc from 'vscode-languageclient/node';
-import { TransportKind } from 'vscode-languageclient/node';
 
 import * as config from '../utils/config';
 import { DisposableContext } from '../utils/disposableContext';
 import { Subject } from 'rxjs';
 import { Logger } from '../logging';
-import { TelemetryReporter } from '../telemetry';
 import { LSPRecorder } from './recorder';
 import { Optional } from '../types';
 import { PythonEnvironmentManager, SDK } from '../pyenv';
-import path from 'path';
-
-/**
- * This type represents the initialization options send by the extension to the
- * proxy.
- */
-export interface InitializationOptions {
-  /**
-   * The path to `mojo-lsp-server`.
-   */
-  serverPath: string;
-  /**
-   * The arguments to use when invoking `mojo-lsp-server`.
-   */
-  serverArgs: string[];
-  /**
-   * The environment to use when invoking `mojo-lsp-server`.
-   */
-  serverEnv: { [env: string]: Optional<string> };
-}
+import { SDKStatusBar } from '../statusBar';
 
 /**
  *  This class manages the LSP clients.
@@ -53,23 +32,23 @@ export class MojoLSPManager extends DisposableContext {
   public lspClient: Optional<vscodelc.LanguageClient>;
   public lspClientChanges = new Subject<Optional<vscodelc.LanguageClient>>();
   private logger: Logger;
-  private reporter: TelemetryReporter;
   private recorder: Optional<LSPRecorder>;
   private statusBarItem: Optional<vscode.StatusBarItem>;
+  private statusBar: SDKStatusBar;
   private attachDebugger: boolean = false;
 
   constructor(
     envManager: PythonEnvironmentManager,
     extensionContext: vscode.ExtensionContext,
     logger: Logger,
-    reporter: TelemetryReporter,
+    statusBar: SDKStatusBar,
   ) {
     super();
 
     this.envManager = envManager;
     this.extensionContext = extensionContext;
     this.logger = logger;
-    this.reporter = reporter;
+    this.statusBar = statusBar;
   }
 
   async activate() {
@@ -237,12 +216,21 @@ export class MojoLSPManager extends DisposableContext {
     const lspClient = this.activateLanguageClient(sdk, includeDirs);
     this.lspClient = lspClient;
     this.lspClientChanges.next(lspClient);
+
+    // Forward LSP state transitions to the status bar.
+    this.statusBar.updateLsp(lspClient.state);
+    this.pushSubscription(
+      lspClient.onDidChangeState((event) => {
+        this.statusBar.updateLsp(event.newState);
+      }),
+    );
+
     this.pushSubscription(
       new vscode.Disposable(() => {
         lspClient.stop();
         lspClient.dispose();
         this.lspClientChanges.next(undefined);
-        this.lspClientChanges.unsubscribe();
+        this.statusBar.updateLsp(undefined);
       }),
     );
   }
@@ -266,34 +254,18 @@ export class MojoLSPManager extends DisposableContext {
       serverArgs.push('--attach-debugger-on-startup');
     }
 
-    const initializationOptions: InitializationOptions = {
-      serverArgs: serverArgs,
-      serverEnv: sdk.getProcessEnv(),
-      serverPath: sdk.lspPath,
-    };
-
-    const module = this.extensionContext.asAbsolutePath(
-      this.extensionContext.extensionMode == vscode.ExtensionMode.Development
-        ? path.join('lsp-proxy', 'out', 'proxy.js')
-        : path.join('out', 'proxy.js'),
-    );
-
     const serverOptions: vscodelc.ServerOptions = {
-      run: { module, transport: TransportKind.ipc },
-      debug: { module, transport: TransportKind.ipc },
+      command: sdk.lspPath,
+      args: serverArgs,
+      options: {
+        env: sdk.getProcessEnv(),
+      },
     };
 
     // Configure the client options.
     const clientOptions: vscodelc.LanguageClientOptions = {
-      // The current selection mechanism indicates all documents to be served
-      // by the same single LSP Server. This wouldn't work if at some point
-      // we support multiple SDKs running at once, for which we'd need a more
-      // flexible way to manage LSP Servers than `vscodelc`. Two options might
-      // be feasible:
-      // - Fork/contribute `vscodelc` and allow for a more customizable selection logic.
-      // - Do the selection within the proxy, which would be "easy" to implement
-      //   if the proxy is restarted with the new correct info whenever a new SDK is
-      //   identified.
+      // All Mojo documents are served by a single language server; multiple
+      // SDKs running concurrently is not supported.
       documentSelector: [
         {
           language: 'mojo',
@@ -314,7 +286,6 @@ export class MojoLSPManager extends DisposableContext {
 
       // Don't switch to output window when the server returns output.
       revealOutputChannelOn: vscodelc.RevealOutputChannelOn.Never,
-      initializationOptions: initializationOptions,
     };
 
     clientOptions.middleware = {
@@ -372,23 +343,9 @@ export class MojoLSPManager extends DisposableContext {
       clientOptions,
     );
 
-    // The proxy sends us a mojo/lspRestart notification when it restarts the
-    // underlying language server. It's our job to pass that to the telemetry
-    // backend.
-    this.pushSubscription(
-      languageClient.onNotification('mojo/lspRestart', () => {
-        this.reporter.sendTelemetryEvent('lspRestart', {
-          mojoSDKVersion: sdk.version,
-          mojoSDKKind: sdk.kind,
-        });
-      }),
-    );
-
     this.logger.lsp.info(
-      `Launching Language Server '${
-        initializationOptions.serverPath
-      }' with options:`,
-      initializationOptions.serverArgs,
+      `Launching Language Server '${sdk.lspPath}' with options:`,
+      serverArgs,
     );
     this.logger.lsp.info('Launching Language Server');
     // We intentionally don't await the `start` so that we can cancelling it
