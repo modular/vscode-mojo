@@ -153,6 +153,7 @@ export class PythonEnvironmentManager extends DisposableContext {
   private lastLoadedEnv: string | undefined = undefined;
   private activeSDK: SDK | undefined = undefined;
   private overridePathState: OverridePathState = 'unset';
+  private sdkPathChangeTimer: NodeJS.Timeout | undefined = undefined;
 
   constructor(logger: Logger, reporter: TelemetryReporter) {
     super();
@@ -169,6 +170,39 @@ export class PythonEnvironmentManager extends DisposableContext {
     this.pushSubscription(
       vscode.extensions.onDidChange(() => this.handleExtensionChange()),
     );
+    // Debounce sdk.path edits so we don't thrash detection while the user is
+    // mid-typing in the Settings GUI.
+    this.pushSubscription(
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (!event.affectsConfiguration('mojo.sdk.path')) {
+          return;
+        }
+        if (this.sdkPathChangeTimer) {
+          clearTimeout(this.sdkPathChangeTimer);
+        }
+        this.sdkPathChangeTimer = setTimeout(() => {
+          this.sdkPathChangeTimer = undefined;
+          this.logger.info('mojo.sdk.path changed, refreshing SDK detection');
+          this.refresh();
+        }, 1500);
+      }),
+    );
+    this.pushSubscription(
+      new vscode.Disposable(() => {
+        if (this.sdkPathChangeTimer) {
+          clearTimeout(this.sdkPathChangeTimer);
+        }
+      }),
+    );
+  }
+
+  /// Invalidate the cached SDK and notify subscribers, so the next lookup
+  /// re-runs detection. Used both by the sdk.path setting watcher and by the
+  /// `mojo.sdk.refresh` command surfaced on the SDK status bar.
+  public refresh() {
+    this.activeSDK = undefined;
+    this.displayedSDKError = false;
+    this.envChangeEmitter.fire();
   }
 
   private async tryInitApi() {
@@ -207,9 +241,7 @@ export class PythonEnvironmentManager extends DisposableContext {
     );
     await this.tryInitApi();
     if (this.api) {
-      // Reset error gating and notify subscribers so the status bar refreshes.
-      this.displayedSDKError = false;
-      this.envChangeEmitter.fire();
+      this.refresh();
     }
   }
 
@@ -219,8 +251,7 @@ export class PythonEnvironmentManager extends DisposableContext {
     );
     if (newEnv != this.lastLoadedEnv) {
       this.logger.info('Python environment has changed, reloading SDK');
-      this.envChangeEmitter.fire();
-      this.displayedSDKError = false;
+      this.refresh();
     }
   }
 

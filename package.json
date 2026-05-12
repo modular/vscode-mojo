@@ -27,11 +27,11 @@
   "main": "./out/extension.js",
   "scripts": {
     "vscode:prepublish": "npm run typecheck && npm run bundle",
-    "typecheck": "tsc --noEmit -p ./ && tsc --noEmit -p ./lsp-proxy",
+    "typecheck": "tsc --noEmit -p ./",
     "bundle": "node esbuild.mjs",
-    "build": "tsc -b ./ && tsc -b ./lsp-proxy",
+    "build": "tsc -b ./",
     "package": "vsce package --out ./out/vscode-mojo.vsix",
-    "ci": "npm ci && cd ./lsp-proxy && npm ci",
+    "ci": "npm ci",
     "format": "npx prettier . --write --ignore-path .gitignore --ignore-path fixtures/pixi-workspace/.gitignore",
     "publish": "vsce publish",
     "test": "vscode-test"
@@ -216,6 +216,11 @@
         "category": "Mojo",
         "command": "mojo.extension.restart",
         "title": "Restart the Extension"
+      },
+      {
+        "category": "Mojo",
+        "command": "mojo.sdk.refresh",
+        "title": "Refresh SDK Detection"
       },
       {
         "category": "Mojo",

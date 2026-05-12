@@ -15,6 +15,5 @@
     "emitDecoratorMetadata": false
   },
   "include": ["extension"],
-  "exclude": ["node_modules", ".vscode-test"],
-  "references": [{ "path": "./lsp-proxy" }]
+  "exclude": ["node_modules", ".vscode-test"]
 }

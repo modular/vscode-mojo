@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
+import * as vscodelc from 'vscode-languageclient/node';
 import { SDK, SDKKind } from './pyenv';
 
 const SDK_KIND_LABELS: Record<SDKKind, string> = {
@@ -30,6 +31,7 @@ export type SDKMissingReason = 'no-python-extension' | 'invalid-sdk-override';
 
 export class SDKStatusBar implements vscode.Disposable {
   private statusBarItem: vscode.StatusBarItem;
+  private lspStatusBarItem: vscode.StatusBarItem;
   private disposables: vscode.Disposable[] = [];
   private visible = false;
   private workspaceHasMojo: boolean | undefined = undefined;
@@ -43,10 +45,19 @@ export class SDKStatusBar implements vscode.Disposable {
     this.statusBarItem = vscode.window.createStatusBarItem(
       'mojo-sdk-status',
       vscode.StatusBarAlignment.Left,
-      50,
+      66,
     );
     this.statusBarItem.name = 'Mojo SDK';
     this.statusBarItem.command = showOutputCommand;
+
+    this.lspStatusBarItem = vscode.window.createStatusBarItem(
+      'mojo-lsp-status',
+      vscode.StatusBarAlignment.Left,
+      65,
+    );
+    this.lspStatusBarItem.name = 'Mojo LSP';
+    this.lspStatusBarItem.command = 'mojo.lsp.restart';
+    this.updateLsp(undefined);
 
     // Watch for mojo files being opened.
     this.disposables.push(
@@ -86,6 +97,7 @@ export class SDKStatusBar implements vscode.Disposable {
     } else if (this.visible) {
       this.visible = false;
       this.statusBarItem.hide();
+      this.lspStatusBarItem.hide();
     }
   }
 
@@ -93,6 +105,7 @@ export class SDKStatusBar implements vscode.Disposable {
     if (!this.visible) {
       this.visible = true;
       this.statusBarItem.show();
+      this.lspStatusBarItem.show();
       this.onShouldRefresh.fire();
     }
   }
@@ -132,16 +145,14 @@ export class SDKStatusBar implements vscode.Disposable {
       this.statusBarItem.tooltip = new vscode.MarkdownString(
         'The `mojo.sdk.path` setting is set but does not point to a valid ' +
           'Mojo SDK. The extension will not fall back to other detection ' +
-          'while this override is set.\n\nClick to open the setting.',
+          'while this override is set.\n\nClick to retry detection (useful ' +
+          'if you have just finished creating the environment), or edit the ' +
+          '`mojo.sdk.path` setting to change the path.',
       );
       this.statusBarItem.backgroundColor = new vscode.ThemeColor(
         'statusBarItem.errorBackground',
       );
-      this.statusBarItem.command = {
-        command: 'workbench.action.openSettings',
-        arguments: ['mojo.sdk.path'],
-        title: 'Open Mojo SDK path setting',
-      };
+      this.statusBarItem.command = 'mojo.sdk.refresh';
     } else {
       this.statusBarItem.text = '$(warning) Mojo: No SDK';
       this.statusBarItem.tooltip = 'No Mojo SDK detected. Click to view logs.';
@@ -152,8 +163,39 @@ export class SDKStatusBar implements vscode.Disposable {
     }
   }
 
+  updateLsp(state: vscodelc.State | undefined) {
+    const warningBg = new vscode.ThemeColor('statusBarItem.warningBackground');
+    const errorBg = new vscode.ThemeColor('statusBarItem.errorBackground');
+
+    switch (state) {
+      case vscodelc.State.Running:
+        this.lspStatusBarItem.text = '$(check) Mojo LSP';
+        this.lspStatusBarItem.tooltip =
+          'Mojo language server is running. Click to restart.';
+        this.lspStatusBarItem.backgroundColor = undefined;
+        break;
+      case vscodelc.State.Starting:
+        this.lspStatusBarItem.text = '$(loading~spin) Mojo LSP';
+        this.lspStatusBarItem.tooltip = 'Mojo language server is starting...';
+        this.lspStatusBarItem.backgroundColor = undefined;
+        break;
+      case vscodelc.State.Stopped:
+        this.lspStatusBarItem.text = '$(error) Mojo LSP stopped';
+        this.lspStatusBarItem.tooltip =
+          'Mojo language server is not running. Click to restart.';
+        this.lspStatusBarItem.backgroundColor = errorBg;
+        break;
+      default:
+        this.lspStatusBarItem.text = '$(circle-slash) Mojo LSP';
+        this.lspStatusBarItem.tooltip = 'Mojo language server has not started.';
+        this.lspStatusBarItem.backgroundColor = warningBg;
+        break;
+    }
+  }
+
   dispose() {
     this.statusBarItem.dispose();
+    this.lspStatusBarItem.dispose();
     this.onShouldRefresh.dispose();
     for (const d of this.disposables) {
       d.dispose();
