@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This changelog relates to the VS Code Extension for the Mojo language. Changelogs for the Mojo project can be found at: [Mojo release changelog](https://docs.modular.com/mojo/changelog)
 
+## [26.4.0] - 2026-05-12
+
+- Added: LSP status bar item showing language server state with click-to-restart (#155)
+- Added: `mojo.sdk.path` setting for manual SDK override (#123)
+- Added: `Mojo: Refresh SDK Detection` command (#155)
+- Change: Python extension (`ms-python.python`) is now a soft dependency, hopefully resolving installation issues in Cursor (#123)
+- Change: LSP server is now invoked directly via stdio; the previous `lsp-proxy` IPC bridge has been removed (#155)
+- Change: Changes to `mojo.sdk.path` now apply automatically rather than via a reload prompt (#155)
+
 ## [26.3.0] - 2026-05-05
 
 - Added: SDK status bar item that shows the detected Mojo SDK version, or a clickable warning if no SDK was found (#152)
