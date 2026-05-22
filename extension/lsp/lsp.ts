@@ -201,6 +201,10 @@ export class MojoLSPManager extends DisposableContext {
     const sdk = await this.envManager.getActiveSDK();
 
     if (!sdk) {
+      // SDK detection failed for an actively-opened Mojo file. Start
+      // watching for newly-discovered pixi envs so a mid-session
+      // `pixi add mojo` is picked up automatically.
+      this.envManager.watchForEnvDiscoveryIfNeeded();
       return;
     }
 

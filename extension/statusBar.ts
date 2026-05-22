@@ -116,15 +116,26 @@ export class SDKStatusBar implements vscode.Disposable {
     this.statusBarItem.backgroundColor = undefined;
   }
 
-  update(sdk: SDK | undefined, reason?: SDKMissingReason) {
+  update(
+    sdk: SDK | undefined,
+    reason?: SDKMissingReason,
+    pickerDivergencePath?: string,
+  ) {
     if (sdk) {
       const version = sdk.version.replace(/^mojo\s*/i, '').trim();
       const kindLabel = SDK_KIND_LABELS[sdk.kind];
       this.statusBarItem.text = `$(check) Mojo ${version} (${kindLabel})`;
-      this.statusBarItem.tooltip = new vscode.MarkdownString(
-        `**Mojo SDK** (${kindLabel})\n\nVersion: ${version}\n\nPath: ${sdk.mojoPath}`,
-      );
+      let tooltip = `**Mojo SDK** (${kindLabel})\n\nVersion: ${version}\n\nPath: ${sdk.mojoPath}`;
+      if (pickerDivergencePath) {
+        tooltip +=
+          `\n\n*Note:* differs from the environment selected via ` +
+          `\`Python: Select Interpreter\` (\`${pickerDivergencePath}\`). ` +
+          'Set `mojo.preferPixiEnv` to `false` if you prefer the picker as ' +
+          'the authoritative source.';
+      }
+      this.statusBarItem.tooltip = new vscode.MarkdownString(tooltip);
       this.statusBarItem.backgroundColor = undefined;
+      this.statusBarItem.color = undefined;
       this.statusBarItem.command = this.showOutputCommand;
     } else if (reason === 'no-python-extension') {
       this.statusBarItem.text = '$(warning) Mojo: Install Python extension';
@@ -132,9 +143,8 @@ export class SDKStatusBar implements vscode.Disposable {
         'The Python extension (`ms-python.python`) is required to discover ' +
           'Mojo SDKs in pixi or wheel environments.\n\nClick to open it in the marketplace.',
       );
-      this.statusBarItem.backgroundColor = new vscode.ThemeColor(
-        'statusBarItem.warningBackground',
-      );
+      this.statusBarItem.backgroundColor = undefined;
+      this.statusBarItem.color = undefined;
       this.statusBarItem.command = {
         command: 'extension.open',
         arguments: ['ms-python.python'],
@@ -152,19 +162,30 @@ export class SDKStatusBar implements vscode.Disposable {
       this.statusBarItem.backgroundColor = new vscode.ThemeColor(
         'statusBarItem.errorBackground',
       );
+      this.statusBarItem.color = undefined;
       this.statusBarItem.command = 'mojo.sdk.refresh';
     } else {
       this.statusBarItem.text = '$(warning) Mojo: No SDK';
-      this.statusBarItem.tooltip = 'No Mojo SDK detected. Click to view logs.';
+      this.statusBarItem.tooltip = new vscode.MarkdownString(
+        "Couldn't find a Mojo SDK. The extension looked for, in order:\n\n" +
+          '1. The `mojo.sdk.path` override setting\n' +
+          '2. The monorepo `.derived/` SDK\n' +
+          '3. A workspace pixi env containing `share/max/modular.cfg` ' +
+          '(`pixi add mojo`)\n' +
+          '4. The active Python interpreter\n\n' +
+          'Click to view logs.',
+      );
       this.statusBarItem.backgroundColor = new vscode.ThemeColor(
         'statusBarItem.warningBackground',
+      );
+      this.statusBarItem.color = new vscode.ThemeColor(
+        'statusBarItem.warningForeground',
       );
       this.statusBarItem.command = this.showOutputCommand;
     }
   }
 
   updateLsp(state: vscodelc.State | undefined) {
-    const warningBg = new vscode.ThemeColor('statusBarItem.warningBackground');
     const errorBg = new vscode.ThemeColor('statusBarItem.errorBackground');
 
     switch (state) {
@@ -188,7 +209,7 @@ export class SDKStatusBar implements vscode.Disposable {
       default:
         this.lspStatusBarItem.text = '$(circle-slash) Mojo LSP';
         this.lspStatusBarItem.tooltip = 'Mojo language server has not started.';
-        this.lspStatusBarItem.backgroundColor = warningBg;
+        this.lspStatusBarItem.backgroundColor = undefined;
         break;
     }
   }
