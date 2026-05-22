@@ -246,6 +246,18 @@ export class PythonEnvironmentManager extends DisposableContext {
         this.handleEnvironmentChange(p.path),
       ),
     );
+    // Ensure env discovery has populated `environments.known` before any SDK
+    // lookup runs against it. Without this, tryGetPixiSDK can miss a
+    // workspace pixi env on first call simply because the Python extension
+    // hasn't enumerated it yet. Per the API docs this triggers discovery
+    // only if it hasn't already happened in the session and returns the
+    // in-flight promise if discovery is already running, so the call is
+    // effectively free after the first time.
+    try {
+      await this.api.environments.refreshEnvironments();
+    } catch (e) {
+      this.logger.warn('Failed to refresh Python environments:', e);
+    }
   }
 
   private async handleExtensionChange() {
