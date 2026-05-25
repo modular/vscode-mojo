@@ -93,7 +93,9 @@ Activating the Mojo Extension
             reason = 'no-python-extension' as const;
           }
         }
-        statusBar.update(sdk, reason);
+        const pickerDivergencePath =
+          this.pyenvManager!.getPickerEnvPathIfDivergent();
+        statusBar.update(sdk, reason, pickerDivergencePath);
       };
 
       this.pushSubscription(
