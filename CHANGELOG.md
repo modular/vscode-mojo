@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This changelog relates to the VS Code Extension for the Mojo language. Changelogs for the Mojo project can be found at: [Mojo release changelog](https://docs.modular.com/mojo/changelog)
 
+## [26.5.0] - 2026-05-25
+
+- Added: Workspace pixi environments (`.pixi/envs/*` containing `share/max/modular.cfg`) are now preferred over the Python extension's active interpreter for Mojo SDK detection (#168)
+- Added: `mojo.preferPixiEnv` setting to disable pixi preference for users who want the Python interpreter picker to remain the authoritative source (#168)
+- Change: Removed the redundant "Unable to load a Python environment" toast on SDK detection failure; the SDK status bar tooltip now lists the detection sources in priority order (#168)
+
 ## [26.4.0] - 2026-05-12
 
 - Added: LSP status bar item showing language server state with click-to-restart (#155)
