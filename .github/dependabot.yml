@@ -18,20 +18,18 @@ updates:
       prefix: "npm"
       include: "scope"
 
-  # Enable version updates for npm (lsp-proxy subdirectory)
-  - package-ecosystem: "npm"
-    directory: "/lsp-proxy"
+  # Enable version updates for pre-commit hooks
+  - package-ecosystem: "pre-commit"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-    versioning-strategy: lockfile-only
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
-      - "npm"
-      - "lsp-proxy"
+      - "pre-commit"
     commit-message:
-      prefix: "npm"
+      prefix: "pre-commit"
       include: "scope"
 
   # Enable version updates for GitHub Actions
