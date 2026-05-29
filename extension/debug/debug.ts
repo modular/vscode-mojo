@@ -11,6 +11,12 @@
 // limitations under the License.
 //===----------------------------------------------------------------------===//
 
+import { execFile } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { promisify } from 'util';
+
 import * as vscode from 'vscode';
 
 import { checkNsightInstall } from '../utils/checkNsight';
@@ -23,6 +29,8 @@ import { quote } from 'shell-quote';
 import { Optional } from '../types';
 import { PythonEnvironmentManager, SDK, SDKKind } from '../pyenv';
 import { Logger } from '../logging';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * Stricter version of vscode.DebugConfiguration intended to reduce the chances
@@ -47,6 +55,7 @@ export type MojoDebugConfiguration = {
   runInTerminal?: boolean;
   buildArgs?: string[];
   enableSyntheticChildDebugging?: boolean;
+  _mojoTempBinary?: string;
 };
 
 /**
@@ -76,6 +85,69 @@ const DEBUG_TYPE: string = 'mojo-lldb';
 
 function envDictToList(dict: { [key: string]: string }): string[] {
   return Object.entries(dict).map(([k, v]) => `${k}=${v}`);
+}
+
+type BuildResult =
+  | { success: true; binaryPath: string }
+  | { success: false; stderr: string };
+
+async function buildMojoFile(
+  sdk: SDK,
+  mojoFile: string,
+  buildArgs: string[],
+  logger: Logger,
+): Promise<BuildResult> {
+  const tmpBinary = path.join(
+    os.tmpdir(),
+    `mojo-debug-${path.basename(mojoFile, path.extname(mojoFile))}-${process.pid}-${Date.now()}`,
+  );
+  try {
+    await execFileAsync(
+      sdk.mojoPath,
+      [
+        'build',
+        '--no-optimization',
+        '--debug-level',
+        'full',
+        ...buildArgs,
+        mojoFile,
+        '-o',
+        tmpBinary,
+      ],
+      { env: { ...process.env, ...sdk.getProcessEnv() } },
+    );
+    // On macOS, LLDB requires get-task-allow to debug a binary it launched.
+    if (process.platform === 'darwin') {
+      const entitlementsPath = `${tmpBinary}.entitlements.plist`;
+      await fs.promises.writeFile(
+        entitlementsPath,
+        '<?xml version="1.0" encoding="UTF-8"?>\n' +
+          '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n' +
+          '<plist version="1.0"><dict>\n' +
+          '  <key>com.apple.security.get-task-allow</key><true/>\n' +
+          '</dict></plist>\n',
+      );
+      try {
+        await execFileAsync('codesign', [
+          '-s',
+          '-',
+          '-f',
+          '--entitlements',
+          entitlementsPath,
+          tmpBinary,
+        ]);
+      } finally {
+        await fs.promises.unlink(entitlementsPath).catch(() => {});
+      }
+    }
+    return { success: true, binaryPath: tmpBinary };
+  } catch (err: unknown) {
+    const stderr =
+      (err as { stderr?: string }).stderr ||
+      (err instanceof Error ? err.message : String(err));
+    logger.error(`mojo build failed:\n${stderr}`);
+    return { success: false, stderr };
+  }
 }
 
 /**
@@ -223,16 +295,30 @@ class MojoDebugConfigurationResolver
         vscode.window.showErrorMessage(message);
         return undefined;
       }
-      debugConfiguration.args = [
-        'run',
-        '--no-optimization',
-        '--debug-level',
-        'full',
-        ...(debugConfiguration.buildArgs || []),
-        debugConfiguration.mojoFile,
-        ...(debugConfiguration.args || []),
-      ];
-      debugConfiguration.program = sdk.mojoPath;
+
+      const buildResult = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Building '${path.basename(debugConfiguration.mojoFile)}'…`,
+          cancellable: false,
+        },
+        () =>
+          buildMojoFile(
+            sdk,
+            debugConfiguration.mojoFile!,
+            debugConfiguration.buildArgs || [],
+            this.logger,
+          ),
+      );
+      if (!buildResult.success) {
+        vscode.window.showErrorMessage(
+          `Failed to build '${path.basename(debugConfiguration.mojoFile)}': ${buildResult.stderr.split('\n')[0]}`,
+        );
+        return undefined;
+      }
+      debugConfiguration.program = buildResult.binaryPath;
+      debugConfiguration.args = debugConfiguration.args || [];
+      debugConfiguration._mojoTempBinary = buildResult.binaryPath;
     }
 
     // We give preference to the init commands specified by the user.
@@ -363,17 +449,25 @@ class MojoCudaGdbDebugConfigurationResolver
     if (!sdk) {
       return undefined;
     }
-    // If we have a mojoFile config, translate it to program plus args.
+    // If we have a mojoFile config, compile it first then debug the binary.
     if (debugConfigIn.mojoFile) {
-      debugConfig.program = sdk.mojoPath;
-      args = [
-        'run',
-        '--no-optimization',
-        '--debug-level',
-        'full',
-        debugConfig.mojoFile,
-        ...args,
-      ];
+      const buildResult = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Building '${path.basename(debugConfigIn.mojoFile)}'…`,
+          cancellable: false,
+        },
+        () => buildMojoFile(sdk, debugConfigIn.mojoFile!, [], this.logger),
+      );
+      if (!buildResult.success) {
+        vscode.window.showErrorMessage(
+          `Failed to build '${path.basename(debugConfigIn.mojoFile)}': ${buildResult.stderr.split('\n')[0]}`,
+        );
+        return undefined;
+      }
+      debugConfig.program = buildResult.binaryPath;
+      debugConfig._mojoTempBinary = buildResult.binaryPath;
+      // args stays as the user-provided run args
     }
 
     // Transform debugConfig into normal cuda-gdb config.
@@ -459,6 +553,21 @@ export class MojoDebugManager extends DisposableContext {
           await vscode.commands.executeCommand(
             'workbench.debug.action.focusRepl',
           );
+        }
+      }),
+    );
+
+    this.pushSubscription(
+      vscode.debug.onDidTerminateDebugSession(async (session: vscode.DebugSession) => {
+        const tmpBinary = session.configuration['_mojoTempBinary'] as
+          | string
+          | undefined;
+        if (tmpBinary) {
+          try {
+            await fs.promises.unlink(tmpBinary);
+          } catch {
+            // Ignore — binary may already be gone.
+          }
         }
       }),
     );
