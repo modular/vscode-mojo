@@ -267,23 +267,6 @@ class MojoDebugConfigurationResolver
     }
 
     if (debugConfiguration.mojoFile) {
-      // Wheel environments do not ship a modular.cfg file that we can use to
-      // invoke 'mojo run' directly. They instead use a wrapper, which can't be
-      // launched under lldb. It's technically possible to launch the underlying
-      // binary directly, but without a modular.cfg file we would need to set a
-      // number of environment variables. We choose not to do that and instead
-      // just disallow debugging a specific file when the SDK is installed via a
-      // Python wheel.
-      if (!sdk.supportsFileDebug) {
-        this.logger.error(
-          `Cannot launch debug session with mojoFile specified (was '${debugConfiguration.mojoFile}') because MAX was installed as a wheel.`,
-        );
-        vscode.window.showErrorMessage(
-          "Debugging a Mojo file using the 'mojoFile' option is not supported when the Mojo SDK is installed as a wheel.",
-        );
-        return undefined;
-      }
-
       if (
         !debugConfiguration.mojoFile.endsWith('.🔥') &&
         !debugConfiguration.mojoFile.endsWith('.mojo')
