@@ -647,11 +647,8 @@ export class PythonEnvironmentManager extends DisposableContext {
 
   /// Attempt to load a Mojo SDK from a workspace-local pixi environment
   /// (`<workspace>/.pixi/envs/*` containing `share/max/modular.cfg`). Returns
-  /// undefined if `mojo.preferPixiEnv` is disabled, no Python extension API
-  /// is available, no workspace folders are open, or no matching env contains
-  /// a valid SDK. Pixi envs are identified by path pattern rather than the
-  /// Python extension's `tools` tag — `KnownEnvironmentTools` does not
-  /// include 'Pixi'.
+  /// undefined if `mojo.preferPixiEnv` is disabled, no workspace folders are
+  /// open, or no matching env contains a valid SDK.
   private async tryGetPixiSDK(): Promise<SDK | undefined> {
     const preferPixi = config.get<boolean>(
       'preferPixiEnv',
