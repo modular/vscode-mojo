@@ -97,9 +97,10 @@ async function buildMojoFile(
   buildArgs: string[],
   logger: Logger,
 ): Promise<BuildResult> {
+  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'mojo-debug-'));
   const tmpBinary = path.join(
-    os.tmpdir(),
-    `mojo-debug-${path.basename(mojoFile, path.extname(mojoFile))}-${process.pid}-${Date.now()}`,
+    tmpDir,
+    path.basename(mojoFile, path.extname(mojoFile)),
   );
   try {
     await execFileAsync(
@@ -118,7 +119,7 @@ async function buildMojoFile(
     );
     // On macOS, LLDB requires get-task-allow to debug a binary it launched.
     if (process.platform === 'darwin') {
-      const entitlementsPath = `${tmpBinary}.entitlements.plist`;
+      const entitlementsPath = path.join(tmpDir, 'entitlements.plist');
       await fs.promises.writeFile(
         entitlementsPath,
         '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -548,7 +549,9 @@ export class MojoDebugManager extends DisposableContext {
             | undefined;
           if (tmpBinary) {
             try {
-              await fs.promises.unlink(tmpBinary);
+              await fs.promises.rm(path.dirname(tmpBinary), {
+                recursive: true,
+              });
             } catch {
               // Ignore — binary may already be gone.
             }
