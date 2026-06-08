@@ -562,12 +562,15 @@ export class MojoDebugManager extends DisposableContext {
             | string
             | undefined;
           if (tmpBinary) {
-            try {
-              await fs.promises.rm(path.dirname(tmpBinary), {
-                recursive: true,
-              });
-            } catch {
-              // Ignore — binary may already be gone.
+            const tmpDir = path.resolve(path.dirname(tmpBinary));
+            const tmpBase = path.resolve(os.tmpdir());
+            const isSafe =
+              tmpDir.startsWith(tmpBase + path.sep) &&
+              path.basename(tmpDir).startsWith('mojo-debug-');
+            if (isSafe) {
+              await fs.promises
+                .rm(tmpDir, { recursive: true, force: true })
+                .catch(() => {});
             }
           }
         },
