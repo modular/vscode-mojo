@@ -100,7 +100,9 @@ async function buildMojoFile(
   logger: Logger,
   cwd?: string,
 ): Promise<BuildResult> {
-  const normalizedBuildArgs = Array.isArray(buildArgs) ? buildArgs : [buildArgs];
+  const normalizedBuildArgs = Array.isArray(buildArgs)
+    ? buildArgs
+    : [buildArgs];
   const tmpDir = await fs.promises.mkdtemp(
     path.join(os.tmpdir(), 'mojo-debug-'),
   );
