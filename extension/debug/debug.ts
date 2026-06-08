@@ -96,10 +96,11 @@ type BuildResult =
 async function buildMojoFile(
   sdk: SDK,
   mojoFile: string,
-  buildArgs: string[],
+  buildArgs: string | string[],
   logger: Logger,
   cwd?: string,
 ): Promise<BuildResult> {
+  const normalizedBuildArgs = Array.isArray(buildArgs) ? buildArgs : [buildArgs];
   const tmpDir = await fs.promises.mkdtemp(
     path.join(os.tmpdir(), 'mojo-debug-'),
   );
@@ -115,7 +116,7 @@ async function buildMojoFile(
         '--no-optimization',
         '--debug-level',
         'full',
-        ...buildArgs,
+        ...normalizedBuildArgs,
         mojoFile,
         '-o',
         tmpBinary,
