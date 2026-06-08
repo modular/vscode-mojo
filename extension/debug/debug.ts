@@ -424,7 +424,7 @@ class MojoCudaGdbDebugConfigurationResolver
 
     // relax the debugConfig.args type
     const debugConfig = debugConfigIn as vscode.DebugConfiguration;
-    let args = debugConfigIn.args || [];
+    const args = debugConfigIn.args || [];
 
     const sdk = await findSDKForDebugConfiguration(
       debugConfigIn as vscode.DebugConfiguration,
