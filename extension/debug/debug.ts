@@ -541,18 +541,20 @@ export class MojoDebugManager extends DisposableContext {
     );
 
     this.pushSubscription(
-      vscode.debug.onDidTerminateDebugSession(async (session: vscode.DebugSession) => {
-        const tmpBinary = session.configuration['_mojoTempBinary'] as
-          | string
-          | undefined;
-        if (tmpBinary) {
-          try {
-            await fs.promises.unlink(tmpBinary);
-          } catch {
-            // Ignore — binary may already be gone.
+      vscode.debug.onDidTerminateDebugSession(
+        async (session: vscode.DebugSession) => {
+          const tmpBinary = session.configuration['_mojoTempBinary'] as
+            | string
+            | undefined;
+          if (tmpBinary) {
+            try {
+              await fs.promises.unlink(tmpBinary);
+            } catch {
+              // Ignore — binary may already be gone.
+            }
           }
-        }
-      }),
+        },
+      ),
     );
 
     this.pushSubscription(initializeInlineLocalVariablesProvider(extension));
