@@ -196,6 +196,15 @@ From the command palette run `Format Document` or tick the setting
 
 ![format](https://github.com/modular/mojo/assets/77730378/4e0e22c4-0216-41d7-b5a5-7f48a018fd81)
 
+To format your code automatically whenever you save a Mojo file, add the following configuration block to your user `settings.json` or your project's `.vscode/settings.json`:
+
+```json
+"[mojo]": {
+    "editor.defaultFormatter": "modular-mojotools.vscode-mojo",
+    "editor.formatOnSave": true
+}
+```
+
 ## Restarting Mojo extension
 
 The extension may crash and produce incorrect results periodically, to fix this
