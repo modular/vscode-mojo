@@ -54,6 +54,7 @@ export type MojoDebugConfiguration = {
   customFrameFormat?: string;
   runInTerminal?: boolean;
   buildArgs?: string[];
+  cwd?: string;
   enableSyntheticChildDebugging?: boolean;
   _mojoTempBinary?: string;
 };
@@ -96,6 +97,7 @@ async function buildMojoFile(
   mojoFile: string,
   buildArgs: string[],
   logger: Logger,
+  cwd?: string,
 ): Promise<BuildResult> {
   const tmpDir = await fs.promises.mkdtemp(
     path.join(os.tmpdir(), 'mojo-debug-'),
@@ -117,7 +119,7 @@ async function buildMojoFile(
         '-o',
         tmpBinary,
       ],
-      { env: { ...process.env, ...sdk.getProcessEnv() } },
+      { env: { ...process.env, ...sdk.getProcessEnv() }, cwd },
     );
     // On macOS, LLDB requires get-task-allow to debug a binary it launched.
     if (process.platform === 'darwin') {
@@ -294,6 +296,7 @@ class MojoDebugConfigurationResolver
             debugConfiguration.mojoFile!,
             debugConfiguration.buildArgs || [],
             this.logger,
+            debugConfiguration.cwd,
           ),
       );
       if (!buildResult.success) {
@@ -443,7 +446,14 @@ class MojoCudaGdbDebugConfigurationResolver
           title: `Building '${path.basename(debugConfigIn.mojoFile)}'…`,
           cancellable: false,
         },
-        () => buildMojoFile(sdk, debugConfigIn.mojoFile!, [], this.logger),
+        () =>
+          buildMojoFile(
+            sdk,
+            debugConfigIn.mojoFile!,
+            [],
+            this.logger,
+            debugConfigIn.cwd as string | undefined,
+          ),
       );
       if (!buildResult.success) {
         vscode.window.showErrorMessage(
