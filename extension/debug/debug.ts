@@ -97,7 +97,9 @@ async function buildMojoFile(
   buildArgs: string[],
   logger: Logger,
 ): Promise<BuildResult> {
-  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'mojo-debug-'));
+  const tmpDir = await fs.promises.mkdtemp(
+    path.join(os.tmpdir(), 'mojo-debug-'),
+  );
   const tmpBinary = path.join(
     tmpDir,
     path.basename(mojoFile, path.extname(mojoFile)),
