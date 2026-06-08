@@ -147,6 +147,7 @@ async function buildMojoFile(
     }
     return { success: true, binaryPath: tmpBinary };
   } catch (err: unknown) {
+    await fs.promises.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
     const stderr =
       (err as { stderr?: string }).stderr ||
       (err instanceof Error ? err.message : String(err));
