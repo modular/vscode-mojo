@@ -72,6 +72,7 @@ type MojoCudaGdbDebugConfiguration = {
   args?: string[];
   program?: string;
   mojoFile?: string;
+  buildArgs?: string[];
   env?: string[];
   cwd?: string[];
   initCommands?: string[];
@@ -451,7 +452,7 @@ class MojoCudaGdbDebugConfigurationResolver
           buildMojoFile(
             sdk,
             debugConfigIn.mojoFile!,
-            [],
+            debugConfigIn.buildArgs || [],
             this.logger,
             debugConfigIn.cwd as string | undefined,
           ),
