@@ -74,7 +74,7 @@ type MojoCudaGdbDebugConfiguration = {
   mojoFile?: string;
   buildArgs?: string[];
   env?: string[];
-  cwd?: string[];
+  cwd?: string;
   initCommands?: string[];
   stopOnEntry?: boolean;
   breakOnLaunch?: boolean;
@@ -456,7 +456,7 @@ class MojoCudaGdbDebugConfigurationResolver
             debugConfigIn.mojoFile!,
             debugConfigIn.buildArgs || [],
             this.logger,
-            debugConfigIn.cwd as string | undefined,
+            debugConfigIn.cwd,
           ),
       );
       if (!buildResult.success) {
