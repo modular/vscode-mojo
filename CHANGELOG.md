@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This changelog relates to the VS Code Extension for the Mojo language. Changelogs for the Mojo project can be found at: [Mojo release changelog](https://docs.modular.com/mojo/changelog)
 
+## [26.5.1] - 2026-06-08
+
+- Fix: Workspace pixi SDK detection now attempts a direct filesystem scan rather than initially depending on the Python extension for discovery (#184)
+- Removed: The `>` glyph decoration previously inserted before lines inside Mojo fenced code blocks (#190)
+- Change: README now documents the VS Code configuration for `editor.formatOnSave` with `.mojo` files (#185) - Thanks @kgcodex!
+
 ## [26.5.0] - 2026-05-25
 
 - Added: Workspace pixi environments (`.pixi/envs/*` containing `share/max/modular.cfg`) are now preferred over the Python extension's active interpreter for Mojo SDK detection (#168)

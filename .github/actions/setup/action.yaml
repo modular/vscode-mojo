@@ -11,10 +11,8 @@ runs:
     - name: Cache Node packages
       uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809
       with:
-        key: npm-${{ hashFiles('package-lock.json', 'lsp-proxy/package-lock.json') }}
-        path: |
-          node_modules
-          lsp-proxy/node_modules
+        key: npm-${{ hashFiles('package-lock.json') }}
+        path: node_modules
 
     - name: Install dependencies
       shell: bash

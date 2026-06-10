@@ -19,7 +19,6 @@ import { DisposableContext } from './utils/disposableContext';
 import { registerFormatter } from './formatter';
 import { activateRunCommands } from './commands/run';
 import { MojoDebugManager } from './debug/debug';
-import { MojoDecoratorManager } from './decorations';
 import { RpcServer } from './server/RpcServer';
 import { Mutex } from 'async-mutex';
 import { TelemetryReporter } from './telemetry';
@@ -133,9 +132,6 @@ Activating the Mojo Extension
       this.pushSubscription(
         activateRunCommands(this.pyenvManager, this.extensionContext),
       );
-
-      // Initialize the decorations.
-      this.pushSubscription(new MojoDecoratorManager());
 
       // Initialize the LSPs
       this.lspManager = new MojoLSPManager(

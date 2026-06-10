@@ -648,11 +648,8 @@ export class PythonEnvironmentManager extends DisposableContext {
 
   /// Attempt to load a Mojo SDK from a workspace-local pixi environment
   /// (`<workspace>/.pixi/envs/*` containing `share/max/modular.cfg`). Returns
-  /// undefined if `mojo.preferPixiEnv` is disabled, no Python extension API
-  /// is available, no workspace folders are open, or no matching env contains
-  /// a valid SDK. Pixi envs are identified by path pattern rather than the
-  /// Python extension's `tools` tag — `KnownEnvironmentTools` does not
-  /// include 'Pixi'.
+  /// undefined if `mojo.preferPixiEnv` is disabled, no workspace folders are
+  /// open, or no matching env contains a valid SDK.
   private async tryGetPixiSDK(): Promise<SDK | undefined> {
     const preferPixi = config.get<boolean>(
       'preferPixiEnv',
@@ -660,90 +657,100 @@ export class PythonEnvironmentManager extends DisposableContext {
       true,
     );
     if (!preferPixi) {
-      return undefined;
-    }
-    if (!this.api) {
+      this.logger.debug('Pixi preference disabled via mojo.preferPixiEnv');
       return undefined;
     }
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
+      this.logger.debug('No workspace folders open; skipping pixi detection');
       return undefined;
     }
 
-    const pixiPathFragment = `${path.sep}.pixi${path.sep}envs${path.sep}`;
-    const workspacePrefixes = workspaceFolders.map((f) => f.uri.fsPath);
-
-    const candidates = this.api.environments.known.filter((env) => {
-      const folderPath = env.environment?.folderUri.fsPath;
-      if (!folderPath || !folderPath.includes(pixiPathFragment)) {
-        return false;
+    // Scan each workspace folder's `.pixi/envs/` directory directly rather
+    // than relying on the Python extension's discovered env list. The Python
+    // extension's pixi env discovery is timing-dependent and can miss envs
+    // that exist on disk, so we look for the well-known pixi layout
+    // ourselves.
+    for (const folder of workspaceFolders) {
+      const envsRoot = path.join(folder.uri.fsPath, '.pixi', 'envs');
+      if (!(await directoryExists(envsRoot))) {
+        continue;
       }
-      return workspacePrefixes.some((prefix) => folderPath.startsWith(prefix));
-    });
 
-    if (candidates.length === 0) {
-      return undefined;
+      let entries: [string, vscode.FileType][];
+      try {
+        entries = await vscode.workspace.fs.readDirectory(
+          vscode.Uri.file(envsRoot),
+        );
+      } catch (e) {
+        this.logger.warn(`Failed to read pixi envs directory ${envsRoot}:`, e);
+        continue;
+      }
+
+      // Prefer the env named "default" (pixi's convention), then
+      // alphabetical by env folder name. Users with multi-env pixi setups
+      // who want a non-default env should use `mojo.sdk.path`.
+      const envNames = entries
+        .filter(([, type]) => type === vscode.FileType.Directory)
+        .map(([name]) => name)
+        .sort((a, b) => {
+          if (a === 'default' && b !== 'default') {
+            return -1;
+          }
+          if (b === 'default' && a !== 'default') {
+            return 1;
+          }
+          return a.localeCompare(b);
+        });
+
+      for (const envName of envNames) {
+        const envPath = path.join(envsRoot, envName);
+        const cfgPath = path.join(envPath, 'share', 'max', 'modular.cfg');
+        if (!(await fileExists(cfgPath))) {
+          continue;
+        }
+        const sdk = await this.createSDKFromHomePath(
+          SDKKind.Environment,
+          path.join(envPath, 'share', 'max'),
+          envPath,
+        );
+        if (!sdk) {
+          continue;
+        }
+
+        this.recordPickerDivergence(envPath);
+        this.logger.info(
+          `Found workspace pixi env with Mojo SDK at ${envPath}`,
+        );
+        return sdk;
+      }
     }
 
-    // Prefer the env named "default" (pixi's convention), then alphabetical
-    // by env folder name. Users with multi-env pixi setups who want a
-    // non-default env should use `mojo.sdk.path`.
-    candidates.sort((a, b) => {
-      const nameA = path.basename(a.environment!.folderUri.fsPath);
-      const nameB = path.basename(b.environment!.folderUri.fsPath);
+    this.logger.debug('No workspace pixi env with share/max/modular.cfg found');
+    return undefined;
+  }
 
-      if (nameA === 'default' && nameB !== 'default') {
-        return -1;
-      }
-
-      if (nameB === 'default' && nameA !== 'default') {
-        return 1;
-      }
-      return nameA.localeCompare(nameB);
-    });
-
-    for (const candidate of candidates) {
-      const resolved =
-        await this.api.environments.resolveEnvironment(candidate);
-      if (!resolved) {
-        continue;
-      }
-      if (!(await this.envHasModularCfg(resolved))) {
-        continue;
-      }
-      const sdk = await this.createSDKFromHomePath(
-        SDKKind.Environment,
-        path.join(resolved.executable.sysPrefix, 'share', 'max'),
-        resolved.executable.sysPrefix,
-      );
-      if (!sdk) {
-        continue;
-      }
-
-      // Record divergence (if any) between the pixi env we chose and the
-      // Python extension's active interpreter. The status bar surfaces this
-      // in the tooltip so the user understands why the picker selection
-      // isn't being honored for SDK lookup.
+  /// If the Python extension's active env differs from the env we just
+  /// chose, record that for the status bar to surface as a tooltip note.
+  /// No-op if the Python extension API isn't available.
+  private async recordPickerDivergence(chosenEnvPath: string) {
+    if (!this.api) {
+      return;
+    }
+    try {
       const pickerPath = this.api.environments.getActiveEnvironmentPath();
       const pickerResolved =
         await this.api.environments.resolveEnvironment(pickerPath);
       const pickerSysPrefix = pickerResolved?.executable.sysPrefix;
-      if (
-        pickerSysPrefix &&
-        pickerSysPrefix !== resolved.executable.sysPrefix
-      ) {
+      if (pickerSysPrefix && pickerSysPrefix !== chosenEnvPath) {
         this.pickerEnvPathAtDetection = pickerSysPrefix;
       }
-
-      this.logger.info(
-        `Found workspace pixi env with Mojo SDK at ${
-          resolved.environment?.folderUri.fsPath
-        }`,
+    } catch (e) {
+      this.logger.debug(
+        'Failed to resolve picker env for divergence check:',
+        e,
       );
-      return sdk;
     }
-
-    return undefined;
   }
 
   /// Returns the Python extension's active environment path if it differs
@@ -753,11 +760,11 @@ export class PythonEnvironmentManager extends DisposableContext {
     return this.pickerEnvPathAtDetection;
   }
 
-  /// Subscribe to `onDidChangeEnvironments` only while there is no active
-  /// SDK. Called by `MojoLSPManager.tryStartLanguageClient` when a `.mojo`
-  /// file is opened but detection fails — that's the only situation where
-  /// we want to react to env-list changes (e.g., the user just ran
-  /// `pixi add mojo` mid-session and we want to pick it up).
+  /// Watch the workspace's `.pixi/envs/` for new `modular.cfg` files
+  /// appearing, so a mid-session `pixi add mojo` is picked up without
+  /// requiring a window reload. Only subscribes while there is no active
+  /// SDK — called by `MojoLSPManager.tryStartLanguageClient` when a `.mojo`
+  /// file is opened but detection fails.
   public watchForEnvDiscoveryIfNeeded() {
     if (this.activeSDK) {
       // Already have an SDK; drop any subscription that was active.
@@ -765,34 +772,27 @@ export class PythonEnvironmentManager extends DisposableContext {
       this.envDiscoverySubscription = undefined;
       return;
     }
-    if (this.envDiscoverySubscription || !this.api) {
+    if (this.envDiscoverySubscription) {
       return;
     }
 
-    const pixiPathFragment = `${path.sep}.pixi${path.sep}envs${path.sep}`;
-    const workspacePrefixes =
-      vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
-
-    this.envDiscoverySubscription =
-      this.api.environments.onDidChangeEnvironments((event) => {
-        // Filter to env changes that affect a workspace pixi env. Avoids
-        // thrashing detection on irrelevant changes like system Python
-        // being indexed.
-        const folderPath = event.env.environment?.folderUri.fsPath;
-        if (!folderPath?.includes(pixiPathFragment)) {
-          return;
-        }
-        if (
-          !workspacePrefixes.some((prefix) => folderPath.startsWith(prefix))
-        ) {
-          return;
-        }
-        this.logger.info(
-          `Workspace pixi env ${event.type} at ${folderPath}, ` +
-            'refreshing SDK detection',
-        );
-        this.refresh();
-      });
+    // Watch every workspace folder's `.pixi/envs/*/share/max/modular.cfg`
+    // path. createFileSystemWatcher tolerates patterns whose directories
+    // don't yet exist — the watcher fires whenever any matching path
+    // appears later.
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      '**/.pixi/envs/*/share/max/modular.cfg',
+    );
+    const onChange = (uri: vscode.Uri) => {
+      this.logger.info(
+        `Workspace pixi env changed (${uri.fsPath}), refreshing SDK detection`,
+      );
+      this.refresh();
+    };
+    watcher.onDidCreate(onChange);
+    watcher.onDidChange(onChange);
+    watcher.onDidDelete(onChange);
+    this.envDiscoverySubscription = watcher;
   }
 
   /// Attempt to load a monorepo SDK from the currently open workspace folder.

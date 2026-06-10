@@ -1,0 +1,76 @@
+# Mojo VS Code Extension
+
+VS Code extension providing language support for Mojo: LSP integration,
+debugger integration, and Mojo SDK detection for various install types.
+
+## Build & development commands
+
+- `npm run typecheck` — TypeScript type check, no emit.
+- `npm run build` — tsc compile to `out/`. What the "Run Extension"
+  launch config uses for in-editor dev.
+- `npm run bundle` — esbuild bundle to `out/extension.js`. Used by
+  packaging; not needed for normal dev.
+- `npm run package` — `vsce package` → `out/vscode-mojo.vsix`.
+- `npm test` — runs both `default` and `pixi` test labels.
+- `npx eslint extension` — lint just the source tree (scopes around
+  the `.vscode-test/` directory which can OOM eslint).
+
+## Architecture summary
+
+- **Entry point:** `extension/extension.ts:MojoExtension`. Activates on
+  startup, wires up `PythonEnvironmentManager`, `SDKStatusBar`, and
+  `MojoLSPManager`.
+- **LSP:** `extension/lsp/lsp.ts` invokes `mojo-lsp-server` directly
+  via stdio using `vscode-languageclient`'s `Executable` server options.
+  There is no intermediary node process.
+- **SDK detection** (`extension/pyenv.ts:PythonEnvironmentManager`):
+  priority order is `mojo.sdk.path` override → monorepo `.derived/` →
+  workspace pixi env (`.pixi/envs/*/share/max/modular.cfg`) →
+  Python extension's active interpreter. The pixi step is gated on
+  `mojo.preferPixiEnv` (default `true`). Active SDK is cached;
+  `refresh()` invalidates and re-runs detection.
+- **Status bar** (`extension/statusBar.ts:SDKStatusBar`): two items —
+  SDK state and LSP state. Visibility tied to a `.mojo` file being
+  open or present in the workspace; uses one shared `checkVisibility()`.
+- **Commands:** LSP commands in `extension/lsp/lsp.ts`, debug in
+  `extension/debug/`, run/file commands in `extension/commands/run.ts`.
+
+## Tests
+
+Two labels declared in `.vscode-test.mjs`:
+
+- **`default`** — `*.test.default.ts` against the repo root.
+- **`pixi`** — `*.test.pixi.ts` against `fixtures/pixi-workspace/`,
+  which expects an installed pixi env. CI prepares this via
+  `pixi install --locked` before running tests.
+
+Each test launches a fresh VS Code instance via `@vscode/test-cli`.
+`mojo.extension.restart` is the standard way to reset extension state
+between assertions within a single test.
+
+## Conventions
+
+- **Pin GitHub Actions to commit SHAs**, not tag references. Existing
+  workflows already do this; new ones should match.
+- **Minimal default permissions** on workflows: `permissions: contents: read`
+  at workflow level, with per-job overrides where strictly needed.
+- **Dev loop:** open repo in VS Code → press F5 → "Run Extension"
+  launches an extension-development-host window with the local build.
+
+## File layout
+
+```
+extension/                  # All TypeScript source
+├── extension.ts            # Activation entry point
+├── pyenv.ts                # SDK detection
+├── statusBar.ts            # Status bar items
+├── lsp/                    # Language client setup
+├── debug/                  # Debugger integration
+├── commands/               # User commands
+├── external/               # Vendored 3rd-party (e.g., ps-list)
+├── utils/                  # Shared helpers
+└── *.test.{default,pixi}.ts  # Tests by label
+
+fixtures/pixi-workspace/    # Pixi test fixture (mojo project)
+.github/workflows/          # CI: test, lint, build, deploy, etc.
+```
