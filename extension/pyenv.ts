@@ -84,9 +84,8 @@ export class SDK {
         );
       }
     } catch (e) {
-      this.logger.error(
-        'Python scripting support in LLDB not found. The test script failed with',
-        e,
+      this.logger.info(
+        `Python scripting support in LLDB not found: ${e instanceof Error ? e.message.split('\n')[0] : e}`,
       );
     }
     return false;
@@ -96,6 +95,8 @@ export class SDK {
   public getProcessEnv(withTelemetry: boolean = true) {
     return {
       MODULAR_TELEMETRY_ENABLED: withTelemetry ? 'true' : 'false',
+      MODULAR_MOJO_MAX_LLDB_PLUGIN_PATH: this.lldbPluginPath,
+      MODULAR_MOJO_MAX_LLDB_VISUALIZERS_PATH: this.visualizersPath,
     };
   }
 }
