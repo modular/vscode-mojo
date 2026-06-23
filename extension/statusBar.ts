@@ -130,8 +130,8 @@ export class SDKStatusBar implements vscode.Disposable {
         tooltip +=
           `\n\n*Note:* differs from the environment selected via ` +
           `\`Python: Select Interpreter\` (\`${pickerDivergencePath}\`). ` +
-          'Set `mojo.preferPixiEnv` to `false` if you prefer the picker as ' +
-          'the authoritative source.';
+          'Set `mojo.preferWorkspaceEnv` to `false` if you prefer the ' +
+          'picker as the authoritative source.';
       }
       this.statusBarItem.tooltip = new vscode.MarkdownString(tooltip);
       this.statusBarItem.backgroundColor = undefined;
@@ -170,8 +170,9 @@ export class SDKStatusBar implements vscode.Disposable {
         "Couldn't find a Mojo SDK. The extension looked for, in order:\n\n" +
           '1. The `mojo.sdk.path` override setting\n' +
           '2. The monorepo `.derived/` SDK\n' +
-          '3. A workspace pixi env containing `share/max/modular.cfg` ' +
-          '(`pixi add mojo`)\n' +
+          '3. A workspace-local env: `.pixi/envs/*` containing ' +
+          '`share/max/modular.cfg` (`pixi add mojo`), then `.venv/` ' +
+          'containing `bin/mojo` (`uv pip install modular`)\n' +
           '4. The active Python interpreter\n\n' +
           'Click to view logs.',
       );

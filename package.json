@@ -171,11 +171,18 @@
           "default": "",
           "markdownDescription": "Absolute path to a Mojo SDK environment root. When set, this overrides all auto-detection (including the monorepo `.derived/` SDK and any environment selected via the Python extension) and will not fall back to auto-detection if invalid.\n\n**For pixi or conda installs**, point to the environment root that contains `share/max/modular.cfg` — for example, `/path/to/workspace/.pixi/envs/default`.\n\n**For wheel installs**, point to the environment root that contains `bin/mojo` and `lib/python*/site-packages/modular/` — for example, `/path/to/.venv`."
         },
+        "mojo.preferWorkspaceEnv": {
+          "scope": "window",
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When enabled, the extension prefers a workspace-discovered environment (a pixi env under `.pixi/envs/*` containing `share/max/modular.cfg`, or a uv/venv at `.venv/` containing `bin/mojo`) over the interpreter selected via `Python: Select Interpreter`. Disable this if you want the Python extension's active environment to be the authoritative source for Mojo SDK discovery."
+        },
         "mojo.preferPixiEnv": {
           "scope": "window",
           "type": "boolean",
           "default": true,
-          "markdownDescription": "When enabled, the extension prefers a workspace pixi environment (`.pixi/envs/*` containing `share/max/modular.cfg`) over the interpreter selected via `Python: Select Interpreter`. Disable this if you want the Python extension's active environment to be the authoritative source for Mojo SDK discovery."
+          "markdownDeprecationMessage": "Use `#mojo.preferWorkspaceEnv#` instead. This setting still works as a fallback when `mojo.preferWorkspaceEnv` is not explicitly set.",
+          "markdownDescription": "Deprecated alias of `#mojo.preferWorkspaceEnv#`. When the new setting is unset, this value is used."
         }
       }
     },
