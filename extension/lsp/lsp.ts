@@ -13,6 +13,7 @@
 
 import * as vscode from 'vscode';
 import * as vscodelc from 'vscode-languageclient/node';
+import { Message } from 'vscode-languageserver-protocol';
 
 import * as config from '../utils/config';
 import { DisposableContext } from '../utils/disposableContext';
@@ -22,6 +23,46 @@ import { LSPRecorder } from './recorder';
 import { Optional } from '../types';
 import { PythonEnvironmentManager, SDK } from '../pyenv';
 import { SDKStatusBar } from '../statusBar';
+
+/// Wraps the language client's default error handler so we can observe when
+/// the library's crash cap fires (i.e. `closed()` returns `DoNotRestart`).
+/// The library's cap policy is a private decision otherwise — no event
+/// surfaces it — so intercepting the handler is the only way to distinguish
+/// "stopped after crash cap" from "stopped for another reason" in the UI.
+class CrashCapObserver implements vscodelc.ErrorHandler {
+  private inner?: vscodelc.ErrorHandler;
+
+  constructor(private readonly onCappedOut: () => void) {}
+
+  /// Called after the client is constructed to install the real handler
+  /// (the default handler is a method on the client, which doesn't exist
+  /// at the time clientOptions.errorHandler must be set).
+  setInner(handler: vscodelc.ErrorHandler) {
+    this.inner = handler;
+  }
+
+  async error(
+    error: Error,
+    message: Message | undefined,
+    count: number | undefined,
+  ): Promise<vscodelc.ErrorHandlerResult> {
+    return (
+      (await this.inner?.error(error, message, count)) ?? {
+        action: vscodelc.ErrorAction.Continue,
+      }
+    );
+  }
+
+  async closed(): Promise<vscodelc.CloseHandlerResult> {
+    const result = (await this.inner?.closed()) ?? {
+      action: vscodelc.CloseAction.DoNotRestart,
+    };
+    if (result.action === vscodelc.CloseAction.DoNotRestart) {
+      this.onCappedOut();
+    }
+    return result;
+  }
+}
 
 /**
  *  This class manages the LSP clients.
@@ -36,6 +77,11 @@ export class MojoLSPManager extends DisposableContext {
   private statusBarItem: Optional<vscode.StatusBarItem>;
   private statusBar: SDKStatusBar;
   private attachDebugger: boolean = false;
+  /// Set when the language client's error handler hits the crash cap and
+  /// returns DoNotRestart. Cleared on the next transition to Starting or
+  /// Running so a manual restart (or a successful auto-recovery) drops the
+  /// "(repeated crashes)" qualifier from the status bar automatically.
+  private lspCappedOut: boolean = false;
 
   constructor(
     envManager: PythonEnvironmentManager,
@@ -54,8 +100,14 @@ export class MojoLSPManager extends DisposableContext {
   async activate() {
     this.pushSubscription(
       vscode.commands.registerCommand('mojo.lsp.restart', async () => {
-        // Wait for the language server to stop. This allows a graceful shutdown of the server instead of simply terminating the process, which is important for tracing.
-        if (this.lspClient) {
+        // Wait for the language server to stop. This allows a graceful
+        // shutdown of the server instead of simply terminating the process,
+        // which is important for tracing. Skip stop() when the client
+        // isn't currently running — `lspClient` may be defined but in a
+        // non-running state (e.g. after `mojo.lsp.stop` or after the
+        // crash-restart cap fired), and calling stop() in those cases
+        // throws "Client is not running and can't be stopped".
+        if (this.lspClient && this.lspClient.state !== vscodelc.State.Stopped) {
           await this.lspClient.stop();
         }
 
@@ -222,10 +274,16 @@ export class MojoLSPManager extends DisposableContext {
     this.lspClientChanges.next(lspClient);
 
     // Forward LSP state transitions to the status bar.
-    this.statusBar.updateLsp(lspClient.state);
+    this.statusBar.updateLsp(lspClient.state, this.lspCappedOut);
     this.pushSubscription(
       lspClient.onDidChangeState((event) => {
-        this.statusBar.updateLsp(event.newState);
+        if (
+          event.newState === vscodelc.State.Starting ||
+          event.newState === vscodelc.State.Running
+        ) {
+          this.lspCappedOut = false;
+        }
+        this.statusBar.updateLsp(event.newState, this.lspCappedOut);
       }),
     );
 
@@ -266,8 +324,18 @@ export class MojoLSPManager extends DisposableContext {
       },
     };
 
+    // Observer for the library's crash-restart cap. The status bar reads
+    // `lspCappedOut` on the next state transition, but the cap decision
+    // itself isn't surfaced via state events, so we have to listen to the
+    // error handler directly.
+    const crashCapObserver = new CrashCapObserver(() => {
+      this.lspCappedOut = true;
+      this.statusBar.updateLsp(vscodelc.State.Stopped, true);
+    });
+
     // Configure the client options.
     const clientOptions: vscodelc.LanguageClientOptions = {
+      errorHandler: crashCapObserver,
       // All Mojo documents are served by a single language server; multiple
       // SDKs running concurrently is not supported.
       documentSelector: [
@@ -346,6 +414,7 @@ export class MojoLSPManager extends DisposableContext {
       serverOptions,
       clientOptions,
     );
+    crashCapObserver.setInner(languageClient.createDefaultErrorHandler());
 
     this.logger.lsp.info(
       `Launching Language Server '${sdk.lspPath}' with options:`,
