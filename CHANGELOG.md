@@ -9,8 +9,8 @@ This changelog relates to the VS Code Extension for the Mojo language. Changelog
 
 ## [26.6.0] - 2026-06-24
 
-- Added: Workspace uv/venv environments (`.venv` containing `bin/mojo`) are now detected as a Mojo SDK source, alongside the existing pixi env detection (#203)
-- Added: `mojo.preferWorkspaceEnv` setting generalizes the previous `mojo.preferPixiEnv` to cover both pixi and uv/venv workspace environments. The old setting is honored as a deprecated alias (#203)
+- Added: Workspace Python venvs (`.venv` containing `bin/mojo`, e.g. from `uv pip install modular`) are now detected as a Mojo SDK source, alongside the existing pixi env detection (#203)
+- Added: `mojo.preferWorkspaceEnv` setting generalizes the previous `mojo.preferPixiEnv` to cover both pixi envs and Python venvs. The old setting is honored as a deprecated alias (#203)
 - Change: Debugging a Mojo file now compiles it ahead-of-time with `mojo build` and attaches LLDB to the produced binary, rather than running it via `mojo run` under LLDB. Crashes in user code are no longer confused with compilation errors, and debugging now works in wheel-installed Mojo SDKs (#192)
 - Change: The LSP status bar item now distinguishes a stopped-after-repeated-crashes state from a normal stopped state, and clicking restart from that state no longer errors out (#204)
 
