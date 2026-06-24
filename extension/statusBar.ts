@@ -186,7 +186,7 @@ export class SDKStatusBar implements vscode.Disposable {
     }
   }
 
-  updateLsp(state: vscodelc.State | undefined) {
+  updateLsp(state: vscodelc.State | undefined, cappedOut: boolean = false) {
     const errorBg = new vscode.ThemeColor('statusBarItem.errorBackground');
 
     switch (state) {
@@ -202,9 +202,17 @@ export class SDKStatusBar implements vscode.Disposable {
         this.lspStatusBarItem.backgroundColor = undefined;
         break;
       case vscodelc.State.Stopped:
-        this.lspStatusBarItem.text = '$(error) Mojo LSP stopped';
-        this.lspStatusBarItem.tooltip =
-          'Mojo language server is not running. Click to restart.';
+        if (cappedOut) {
+          this.lspStatusBarItem.text =
+            '$(error) Mojo LSP stopped (repeated crashes)';
+          this.lspStatusBarItem.tooltip =
+            'Mojo language server stopped after repeated crashes. ' +
+            'Click to restart, or check the output channel for details.';
+        } else {
+          this.lspStatusBarItem.text = '$(error) Mojo LSP stopped';
+          this.lspStatusBarItem.tooltip =
+            'Mojo language server is not running. Click to restart.';
+        }
         this.lspStatusBarItem.backgroundColor = errorBg;
         break;
       default:

@@ -536,7 +536,13 @@ export class PythonEnvironmentManager extends DisposableContext {
 
     try {
       const version = 'version' in config.max ? config.max.version : '0.0.0';
-      this.logger.info(`Found SDK with version ${version}`);
+      const lspServerPath = config['mojo-max']['lsp_server_path'];
+      // modular.cfg stores absolute paths; surface the resolved LSP path so
+      // it's visible when an env's internal paths point outside its home
+      // (typically the result of copying an env across directories).
+      this.logger.info(
+        `Found SDK with version ${version} (lsp_server_path: ${lspServerPath})`,
+      );
 
       this.reporter.sendTelemetryEvent('sdkLoaded', {
         version,
@@ -548,7 +554,7 @@ export class PythonEnvironmentManager extends DisposableContext {
         kind,
         version,
         homePath,
-        config['mojo-max']['lsp_server_path'],
+        lspServerPath,
         config['mojo-max']['mblack_path'],
         config['mojo-max']['lldb_plugin_path'],
         config['mojo-max']['lldb_vscode_path'],
