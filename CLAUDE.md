@@ -25,10 +25,12 @@ debugger integration, and Mojo SDK detection for various install types.
   There is no intermediary node process.
 - **SDK detection** (`extension/pyenv.ts:PythonEnvironmentManager`):
   priority order is `mojo.sdk.path` override → monorepo `.derived/` →
-  workspace pixi env (`.pixi/envs/*/share/max/modular.cfg`) →
-  Python extension's active interpreter. The pixi step is gated on
-  `mojo.preferPixiEnv` (default `true`). Active SDK is cached;
-  `refresh()` invalidates and re-runs detection.
+  workspace-local env (`.pixi/envs/*/share/max/modular.cfg` or
+  `.venv/bin/mojo`) → Python extension's active interpreter. The
+  workspace-env step is gated on `mojo.preferWorkspaceEnv` (default
+  `true`; the deprecated `mojo.preferPixiEnv` is honored as a fallback
+  alias). Active SDK is cached; `refresh()` invalidates and re-runs
+  detection.
 - **Status bar** (`extension/statusBar.ts:SDKStatusBar`): two items —
   SDK state and LSP state. Visibility tied to a `.mojo` file being
   open or present in the workspace; uses one shared `checkVisibility()`.
@@ -47,6 +49,13 @@ Two labels declared in `.vscode-test.mjs`:
 Each test launches a fresh VS Code instance via `@vscode/test-cli`.
 `mojo.extension.restart` is the standard way to reset extension state
 between assertions within a single test.
+
+**Fixture lockfiles pin the installed SDK.** The pixi fixture's
+`pixi.lock` fixes the Mojo/max version that CI installs; refresh it
+periodically (`pixi update` inside `fixtures/pixi-workspace/`) so CI
+exercises current SDK layout, not a snapshot from many months ago.
+Any new workspace-env fixture (e.g. a future uv fixture) should
+follow the same convention.
 
 ## Conventions
 
