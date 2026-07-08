@@ -148,6 +148,15 @@
             "type": "string"
           }
         },
+        "mojo.lsp.checkDocstrings": {
+          "scope": "window",
+          "type": "boolean",
+          "default": false,
+          "tags": [
+            "experimental"
+          ],
+          "description": "Parse and type-check code blocks inside doc strings. When disabled (the default), the language server validates docstring structure but ignores errors inside docstring code-block examples."
+        },
         "mojo.lsp.suppress.diagnostics.in.docstring": {
           "scope": "resource",
           "type": "boolean",

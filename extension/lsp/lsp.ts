@@ -312,6 +312,16 @@ export class MojoLSPManager extends DisposableContext {
       serverArgs.push('-I', includeDir);
     }
 
+    if (
+      config.get<boolean>(
+        'lsp.checkDocstrings',
+        /*workspaceFolder=*/ undefined,
+        false,
+      )
+    ) {
+      serverArgs.push('-check-docstrings');
+    }
+
     if (this.attachDebugger) {
       serverArgs.push('--attach-debugger-on-startup');
     }
