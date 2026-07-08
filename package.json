@@ -157,12 +157,6 @@
           ],
           "description": "Parse and type-check code blocks inside doc strings. When disabled (the default), the language server validates docstring structure but ignores errors inside docstring code-block examples."
         },
-        "mojo.lsp.suppress.diagnostics.in.docstring": {
-          "scope": "resource",
-          "type": "boolean",
-          "default": false,
-          "description": "Suppress warnings and errors in docstring."
-        },
         "mojo.formatting.args": {
           "scope": "resource",
           "type": "array",
