@@ -5,3 +5,6 @@ node_modules/
 
 # GitHub Actions workflows
 .github/
+
+# Lockfiles managed by pixi
+**/pixi.lock
