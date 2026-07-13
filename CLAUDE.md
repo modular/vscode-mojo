@@ -39,23 +39,26 @@ debugger integration, and Mojo SDK detection for various install types.
 
 ## Tests
 
-Two labels declared in `.vscode-test.mjs`:
+Three labels declared in `.vscode-test.mjs`:
 
 - **`default`** — `*.test.default.ts` against the repo root.
 - **`pixi`** — `*.test.pixi.ts` against `fixtures/pixi-workspace/`,
   which expects an installed pixi env. CI prepares this via
   `pixi install --locked` before running tests.
+- **`uv`** — `*.test.uv.ts` against `fixtures/uv-workspace/`, which
+  expects a wheel install in `.venv/`. CI prepares this via
+  `uv sync --frozen` before running tests.
 
 Each test launches a fresh VS Code instance via `@vscode/test-cli`.
 `mojo.extension.restart` is the standard way to reset extension state
 between assertions within a single test.
 
-**Fixture lockfiles pin the installed SDK.** The pixi fixture's
-`pixi.lock` fixes the Mojo/max version that CI installs; refresh it
-periodically (`pixi update` inside `fixtures/pixi-workspace/`) so CI
-exercises current SDK layout, not a snapshot from many months ago.
-Any new workspace-env fixture (e.g. a future uv fixture) should
-follow the same convention.
+**Fixture lockfiles pin the installed SDK.** Both fixtures pin an
+exact SDK version through their lockfile (`pixi.lock` and `uv.lock`);
+refresh periodically so CI exercises the current SDK layout instead
+of a snapshot from many months ago — `pixi update` inside
+`fixtures/pixi-workspace/`, or `uv lock --upgrade` inside
+`fixtures/uv-workspace/`.
 
 ## Conventions
 
@@ -81,5 +84,6 @@ extension/                  # All TypeScript source
 └── *.test.{default,pixi}.ts  # Tests by label
 
 fixtures/pixi-workspace/    # Pixi test fixture (mojo project)
+fixtures/uv-workspace/      # uv test fixture (wheel install)
 .github/workflows/          # CI: test, lint, build, deploy, etc.
 ```
