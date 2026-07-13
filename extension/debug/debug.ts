@@ -90,8 +90,7 @@ function envDictToList(dict: { [key: string]: string }): string[] {
 }
 
 type BuildResult =
-  | { success: true; binaryPath: string }
-  | { success: false; stderr: string };
+  { success: true; binaryPath: string } | { success: false; stderr: string };
 
 async function buildMojoFile(
   sdk: SDK,
@@ -564,8 +563,7 @@ export class MojoDebugManager extends DisposableContext {
       vscode.debug.onDidTerminateDebugSession(
         async (session: vscode.DebugSession) => {
           const tmpBinary = session.configuration['_mojoTempBinary'] as
-            | string
-            | undefined;
+            string | undefined;
           if (tmpBinary) {
             const tmpDir = path.resolve(path.dirname(tmpBinary));
             const tmpBase = path.resolve(os.tmpdir());
