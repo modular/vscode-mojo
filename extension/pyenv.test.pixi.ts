@@ -12,7 +12,10 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as vscode from 'vscode';
+import * as ini from 'ini';
 import { extension } from './extension';
 import { SDKKind } from './pyenv';
 
@@ -22,6 +25,17 @@ suite('pyenv', function () {
     const sdk = await extension.pyenvManager!.getActiveSDK();
     assert.ok(sdk);
     assert.strictEqual(sdk.kind, SDKKind.Environment);
-    assert.strictEqual(sdk.version, '25.5.0.dev2025071605');
+
+    // Rather than hardcode a version string that would need updating on
+    // every pixi.lock refresh, read the version from the same
+    // modular.cfg file the extension parses. Asserts our detection
+    // reads what pixi installed.
+    const workspaceFolder = vscode.workspace.workspaceFolders![0].uri.fsPath;
+    const cfgPath = path.join(
+      workspaceFolder,
+      '.pixi/envs/default/share/max/modular.cfg',
+    );
+    const cfg = ini.parse(await fs.promises.readFile(cfgPath, 'utf8'));
+    assert.strictEqual(sdk.version, cfg.max.version);
   });
 });
