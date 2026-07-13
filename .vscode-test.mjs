@@ -23,4 +23,11 @@ export default defineConfig([
     files: 'out/**/*.test.pixi.js',
     installExtensions: ['ms-python.python'],
   },
+  {
+    ...baseConfig,
+    label: 'uv',
+    workspaceFolder: 'fixtures/uv-workspace/',
+    files: 'out/**/*.test.uv.js',
+    installExtensions: ['ms-python.python'],
+  },
 ]);

@@ -54,6 +54,15 @@ jobs:
         working-directory: fixtures/pixi-workspace
         run: pixi install --locked
 
+      - name: Setup uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: 0.11.23
+
+      - name: Initialize uv workspace
+        working-directory: fixtures/uv-workspace
+        run: uv sync --frozen
+
       - name: Build extension
         run: npm run build
 
