@@ -29,8 +29,33 @@ permissions:
   pull-requests: read
 
 jobs:
-  test:
-    name: Test
+  default-tests:
+    name: Test (default)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - uses: ./.github/actions/setup
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Execute tests
+        run: xvfb-run -a npm test -- --label default
+
+  env-tests:
+    name: Test (${{ matrix.env }})
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [pixi, uv]
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -45,21 +70,25 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Setup Pixi
+        if: matrix.env == 'pixi'
         uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f
         with:
           pixi-version: v0.63.2
           run-install: false
 
       - name: Initialize Pixi workspace
+        if: matrix.env == 'pixi'
         working-directory: fixtures/pixi-workspace
         run: pixi install --locked
 
       - name: Setup uv
+        if: matrix.env == 'uv'
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           version: 0.11.23
 
       - name: Initialize uv workspace
+        if: matrix.env == 'uv'
         working-directory: fixtures/uv-workspace
         run: uv sync --frozen
 
@@ -67,4 +96,4 @@ jobs:
         run: npm run build
 
       - name: Execute tests
-        run: xvfb-run -a npm test
+        run: xvfb-run -a npm test -- --label ${{ matrix.env }}
