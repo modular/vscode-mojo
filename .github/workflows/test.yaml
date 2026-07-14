@@ -51,12 +51,13 @@ jobs:
         run: xvfb-run -a npm test -- --label default
 
   env-tests:
-    name: Test (${{ matrix.env }})
+    name: Test (${{ matrix.env }}, ${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         env: [pixi, uv]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
 
     defaults:
@@ -95,5 +96,10 @@ jobs:
       - name: Build extension
         run: npm run build
 
-      - name: Execute tests
+      - name: Execute tests (Linux)
+        if: runner.os == 'Linux'
         run: xvfb-run -a npm test -- --label ${{ matrix.env }}
+
+      - name: Execute tests (macOS)
+        if: runner.os == 'macOS'
+        run: npm test -- --label ${{ matrix.env }}
