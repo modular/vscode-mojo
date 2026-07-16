@@ -57,6 +57,14 @@ Test files may live in subdirectories of `extension/` alongside the
 code they test (e.g., `extension/lsp/lsp.test.pixi.ts`); the CI globs
 `out/**/*.test.<label>.js` pick them up automatically.
 
+When a test is fixture-agnostic (uses `workspaceFolders[0]` rather
+than a hardcoded path), extract its body into a `*TestBody.ts` file
+and have the `.test.pixi.ts` / `.test.uv.ts` wrappers be one-line
+side-effect imports (`import './xTestBody';`). Mocha registers the
+tests when loading the wrapper. See `extension/lsp/lspTestBody.ts`
+for an example. Keep tests separate if they legitimately need to
+differ per label (as `pyenv.test.pixi.ts` and `pyenv.test.uv.ts` do).
+
 **CI shape:** a single `default-tests` job runs the OS-independent
 `default` label on `ubuntu-latest`. `env-tests` is a matrix over
 `(os × env)` with `os: [ubuntu-latest, macos-latest]` and
@@ -93,7 +101,7 @@ extension/                  # All TypeScript source
 ├── commands/               # User commands
 ├── external/               # Vendored 3rd-party (e.g., ps-list)
 ├── utils/                  # Shared helpers
-└── *.test.{default,pixi}.ts  # Tests by label
+└── *.test.{default,pixi,uv}.ts  # Tests by label (with *TestBody.ts helpers)
 
 fixtures/pixi-workspace/    # Pixi test fixture (mojo project)
 fixtures/uv-workspace/      # uv test fixture (wheel install)

@@ -11,5 +11,5 @@
 // limitations under the License.
 //===----------------------------------------------------------------------===//
 
-// Runs the shared LSP test body under the pixi label. See lspTestBody.ts.
-import './lspTestBody';
+// Runs the shared debug test body under the pixi label. See debugTestBody.ts.
+import './debugTestBody';
