@@ -53,6 +53,18 @@ Each test launches a fresh VS Code instance via `@vscode/test-cli`.
 `mojo.extension.restart` is the standard way to reset extension state
 between assertions within a single test.
 
+Test files may live in subdirectories of `extension/` alongside the
+code they test (e.g., `extension/lsp/lsp.test.pixi.ts`); the CI globs
+`out/**/*.test.<label>.js` pick them up automatically.
+
+**CI shape:** a single `default-tests` job runs the OS-independent
+`default` label on `ubuntu-latest`. `env-tests` is a matrix over
+`(os × env)` with `os: [ubuntu-latest, macos-latest]` and
+`env: [pixi, uv]`, giving four cells. Each cell only sets up the env
+it needs (via `if: matrix.env == '...'` guards) and runs only its
+matching label via `--label ${{ matrix.env }}`. `xvfb-run` is
+Linux-only, so the "Execute tests" step splits per-OS on `runner.os`.
+
 **Fixture lockfiles pin the installed SDK.** Both fixtures pin an
 exact SDK version through their lockfile (`pixi.lock` and `uv.lock`);
 refresh periodically so CI exercises the current SDK layout instead
