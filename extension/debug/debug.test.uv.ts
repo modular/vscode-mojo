@@ -11,5 +11,5 @@
 // limitations under the License.
 //===----------------------------------------------------------------------===//
 
-// Runs the shared debug test body under the pixi label. See debugTestBody.ts.
+// Runs the shared debug test body under the uv label. See debugTestBody.ts.
 import './debugTestBody';
