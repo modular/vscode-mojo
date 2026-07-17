@@ -15,18 +15,13 @@ import * as assert from 'assert';
 import * as vscodelc from 'vscode-languageclient/node';
 import { CrashCapObserver } from './crashCapObserver';
 
-/// Build a stub ErrorHandler that always returns the given actions.
-/// error() returns Continue for count <= 3 and Shutdown otherwise, mirroring
-/// the default handler's shape closely enough for our purposes.
+/// Build a stub ErrorHandler whose closed() returns the given action.
+/// error() is a no-op returning Continue since these tests focus on the
+/// crash-cap logic in closed().
 function stubHandler(closeAction: vscodelc.CloseAction): vscodelc.ErrorHandler {
   return {
-    async error(_e, _m, count) {
-      return {
-        action:
-          count && count > 3
-            ? vscodelc.ErrorAction.Shutdown
-            : vscodelc.ErrorAction.Continue,
-      };
+    async error() {
+      return { action: vscodelc.ErrorAction.Continue };
     },
     async closed() {
       return { action: closeAction };
