@@ -13,9 +13,9 @@
 
 import * as vscode from 'vscode';
 import * as vscodelc from 'vscode-languageclient/node';
-import { Message } from 'vscode-languageserver-protocol';
 
 import * as config from '../utils/config';
+import { CrashCapObserver } from './crashCapObserver';
 import { DisposableContext } from '../utils/disposableContext';
 import { Subject } from 'rxjs';
 import { Logger } from '../logging';
@@ -23,46 +23,6 @@ import { LSPRecorder } from './recorder';
 import { Optional } from '../types';
 import { PythonEnvironmentManager, SDK } from '../pyenv';
 import { SDKStatusBar } from '../statusBar';
-
-/// Wraps the language client's default error handler so we can observe when
-/// the library's crash cap fires (i.e. `closed()` returns `DoNotRestart`).
-/// The library's cap policy is a private decision otherwise — no event
-/// surfaces it — so intercepting the handler is the only way to distinguish
-/// "stopped after crash cap" from "stopped for another reason" in the UI.
-class CrashCapObserver implements vscodelc.ErrorHandler {
-  private inner?: vscodelc.ErrorHandler;
-
-  constructor(private readonly onCappedOut: () => void) {}
-
-  /// Called after the client is constructed to install the real handler
-  /// (the default handler is a method on the client, which doesn't exist
-  /// at the time clientOptions.errorHandler must be set).
-  setInner(handler: vscodelc.ErrorHandler) {
-    this.inner = handler;
-  }
-
-  async error(
-    error: Error,
-    message: Message | undefined,
-    count: number | undefined,
-  ): Promise<vscodelc.ErrorHandlerResult> {
-    return (
-      (await this.inner?.error(error, message, count)) ?? {
-        action: vscodelc.ErrorAction.Continue,
-      }
-    );
-  }
-
-  async closed(): Promise<vscodelc.CloseHandlerResult> {
-    const result = (await this.inner?.closed()) ?? {
-      action: vscodelc.CloseAction.DoNotRestart,
-    };
-    if (result.action === vscodelc.CloseAction.DoNotRestart) {
-      this.onCappedOut();
-    }
-    return result;
-  }
-}
 
 /**
  *  This class manages the LSP clients.
