@@ -91,11 +91,8 @@ suite('debug', function () {
     const workspaceFolder = vscode.workspace.workspaceFolders![0];
     const mojoFile = path.join(workspaceFolder.uri.fsPath, 'main.mojo');
 
-    // main.mojo is:
-    //   def main():
-    //       print("hello, world")
-    // The print statement is line 2 (0-indexed as 1); line 1 is the
-    // `def` declaration which LLDB won't stop on.
+    // Set the breakpoint on line 2 (0-indexed as 1) — the print statement.
+    // Line 1 is `def main():` which LLDB won't stop on.
     const breakpoint = new vscode.SourceBreakpoint(
       new vscode.Location(vscode.Uri.file(mojoFile), new vscode.Position(1, 0)),
     );
