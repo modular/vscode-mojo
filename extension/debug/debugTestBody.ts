@@ -84,4 +84,72 @@ suite('debug', function () {
     }
     assert.ok(cleaned, `Temp dir ${tempDir} should have been cleaned up`);
   });
+
+  test('debug session stops at a breakpoint and continues', async function () {
+    this.timeout(60_000);
+
+    const workspaceFolder = vscode.workspace.workspaceFolders![0];
+    const mojoFile = path.join(workspaceFolder.uri.fsPath, 'main.mojo');
+
+    // Set the breakpoint on line 2 (0-indexed as 1) — the print statement.
+    // Line 1 is `def main():` which LLDB won't stop on.
+    const breakpoint = new vscode.SourceBreakpoint(
+      new vscode.Location(vscode.Uri.file(mojoFile), new vscode.Position(1, 0)),
+    );
+    vscode.debug.addBreakpoints([breakpoint]);
+
+    // Observe DAP traffic to catch the "stopped at breakpoint" event and
+    // send a continue in response, so the program can exit and the test
+    // can finish. Registered before startDebugging so the factory fires
+    // for the session we're about to launch.
+    let stoppedAtBreakpoint = false;
+    const trackerReg = vscode.debug.registerDebugAdapterTrackerFactory(
+      'mojo-lldb',
+      {
+        createDebugAdapterTracker(session) {
+          return {
+            onDidSendMessage(message) {
+              if (
+                message.type === 'event' &&
+                message.event === 'stopped' &&
+                message.body?.reason === 'breakpoint'
+              ) {
+                stoppedAtBreakpoint = true;
+                void session.customRequest('continue', {
+                  threadId: message.body.threadId,
+                });
+              }
+            },
+          };
+        },
+      },
+    );
+
+    try {
+      const termPromise = new Promise<void>((resolve) => {
+        const sub = vscode.debug.onDidTerminateDebugSession(() => {
+          sub.dispose();
+          resolve();
+        });
+      });
+
+      const started = await vscode.debug.startDebugging(workspaceFolder, {
+        type: 'mojo-lldb',
+        name: 'Debug main.mojo with breakpoint',
+        request: 'launch',
+        mojoFile,
+      });
+      assert.ok(started, 'startDebugging should have returned true');
+
+      await termPromise;
+
+      assert.ok(
+        stoppedAtBreakpoint,
+        'Session should have stopped at the breakpoint on line 2',
+      );
+    } finally {
+      trackerReg.dispose();
+      vscode.debug.removeBreakpoints([breakpoint]);
+    }
+  });
 });
