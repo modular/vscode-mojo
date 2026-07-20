@@ -23,6 +23,15 @@ import { LSPRecorder } from './recorder';
 import { Optional } from '../types';
 import { PythonEnvironmentManager, SDK } from '../pyenv';
 import { SDKStatusBar } from '../statusBar';
+import {
+  correctAliasSemanticTokens,
+  SemanticTokenTypeIndexes,
+} from './semanticTokens';
+
+type ProtocolSemanticTokens = {
+  data?: number[];
+  resultId?: string;
+} | null;
 
 /**
  *  This class manages the LSP clients.
@@ -294,6 +303,8 @@ export class MojoLSPManager extends DisposableContext {
     });
 
     // Configure the client options.
+    let languageClient: vscodelc.LanguageClient;
+    let tokenTypeIndexes: SemanticTokenTypeIndexes | undefined;
     const clientOptions: vscodelc.LanguageClientOptions = {
       errorHandler: crashCapObserver,
       // All Mojo documents are served by a single language server; multiple
@@ -335,6 +346,57 @@ export class MojoLSPManager extends DisposableContext {
           return next(method, param);
         }
       },
+      async provideDocumentSemanticTokens(document, token, next) {
+        const semanticTokens = await next(document, token);
+        return correctAliasSemanticTokens(
+          document,
+          semanticTokens ?? undefined,
+          tokenTypeIndexes,
+        );
+      },
+      async provideDocumentSemanticTokensEdits(
+        document,
+        previousResultId,
+        token,
+        next,
+      ) {
+        const editResult = await next(document, previousResultId, token);
+        if (editResult instanceof vscode.SemanticTokens) {
+          return correctAliasSemanticTokens(
+            document,
+            editResult,
+            tokenTypeIndexes,
+          );
+        }
+        if (token.isCancellationRequested) {
+          return undefined;
+        }
+
+        // SemanticTokensEdits are relative to VS Code's previous token array,
+        // so request a full snapshot when the server returns edits. That keeps
+        // the alias correction context-aware instead of trying to patch deltas.
+        const result = await languageClient.sendRequest<ProtocolSemanticTokens>(
+          'textDocument/semanticTokens/full',
+          {
+            textDocument:
+              languageClient.code2ProtocolConverter.asTextDocumentIdentifier(
+                document,
+              ),
+          },
+          token,
+        );
+        if (result === null || token.isCancellationRequested) {
+          return undefined;
+        }
+        return correctAliasSemanticTokens(
+          document,
+          new vscode.SemanticTokens(
+            new Uint32Array(result.data ?? []),
+            result.resultId,
+          ),
+          tokenTypeIndexes,
+        );
+      },
       async handleDiagnostics(uri, diagnostics, next) {
         if (
           config.get<boolean>(
@@ -368,12 +430,24 @@ export class MojoLSPManager extends DisposableContext {
     };
 
     // Create the language client and start the client.
-    const languageClient = new vscodelc.LanguageClient(
+    languageClient = new vscodelc.LanguageClient(
       'mojo-lsp',
       'Mojo Language Client',
       serverOptions,
       clientOptions,
     );
+    languageClient.onDidChangeState((event) => {
+      if (event.newState !== vscodelc.State.Running) {
+        return;
+      }
+      const tokenTypes =
+        languageClient.initializeResult?.capabilities.semanticTokensProvider
+          ?.legend.tokenTypes;
+      const variable = tokenTypes?.indexOf('variable') ?? -1;
+      const type = tokenTypes?.indexOf('type') ?? -1;
+      tokenTypeIndexes =
+        variable >= 0 && type >= 0 ? { variable, type } : undefined;
+    });
     crashCapObserver.setInner(languageClient.createDefaultErrorHandler());
 
     this.logger.lsp.info(
