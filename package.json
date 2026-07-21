@@ -62,7 +62,7 @@
     "ini": "4.1.1",
     "md5": "2.3.0",
     "rxjs": "7.8.1",
-    "shell-quote": "1.8.1",
+    "shell-quote": "^1.8.4",
     "typescript-memoize": "1.1.1",
     "vscode-languageclient": "^9.0.1"
   },
