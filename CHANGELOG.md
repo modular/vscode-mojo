@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This changelog relates to the VS Code Extension for the Mojo language. Changelogs for the Mojo project can be found at: [Mojo release changelog](https://docs.modular.com/mojo/changelog)
 
+## [26.6.1] - 2026-08-03
+
+- Change: Syntax highlighting updated for recent Mojo language changes — recognizes `imm` and `__deinit__` (previously `read` and `__del__`) (#243)
+
 ## [26.6.0] - 2026-06-24
 
 - Added: Workspace Python venvs (`.venv` containing `bin/mojo`, e.g. from `uv pip install modular`) are now detected as a Mojo SDK source, alongside the existing pixi env detection (#203)
