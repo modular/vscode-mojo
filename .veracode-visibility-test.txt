@@ -1,0 +1,6 @@
+Test PR to confirm the Veracode SCA agent scan now fires on pull requests
+against this repo, after modular/veracode PR #12
+(https://github.com/modular/veracode/pull/12) scoped repo_list.yml's
+include_repos to just vscode-mojo and set the SCA-on-PR trigger.
+
+Safe to close/delete once a Veracode SCA check run is confirmed on this PR.
