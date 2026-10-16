@@ -134,15 +134,18 @@
           "match": "\\b(?<!\\.)(class|struct|trait)\\b"
         },
         {
-          "match": "(?x)\n  ^\\s*(\n    case | match\n  )(?=\\s*([-+\\w\\d(\\[{'\":#]|$))\\b\n",
+          "match": "\\b(?<!\\.)(?:(comptime)\\s+)?(case|match)\\b",
           "captures": {
             "1": {
+              "name": "storage.modifier.declaration.python"
+            },
+            "2": {
               "name": "keyword.control.flow.python"
             }
           }
         },
         {
-          "match": "\\b(var|let|alias|comptime) \\s*([[:alpha:]_]\\w*)\\b",
+          "match": "\\b(var|let|alias|comptime|ref)\\s+([[:alpha:]_]\\w*)\\b",
           "captures": {
             "1": {
               "name": "storage.modifier.declaration.python"
@@ -213,6 +216,10 @@
         },
         {
           "include": "#special-names"
+        },
+        {
+          "name": "storage.modifier.declaration.python",
+          "match": "\\b(?<!\\.)(ref|var)\\b"
         },
         {
           "include": "#illegal-names"
