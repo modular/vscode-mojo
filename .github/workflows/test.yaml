@@ -72,7 +72,7 @@ jobs:
 
       - name: Setup Pixi
         if: matrix.env == 'pixi'
-        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94
         with:
           pixi-version: v0.63.2
           run-install: false
