@@ -272,6 +272,16 @@ export class MojoLSPManager extends DisposableContext {
       serverArgs.push('-I', includeDir);
     }
 
+    if (
+      config.get<boolean>(
+        'lsp.checkDocstrings',
+        /*workspaceFolder=*/ undefined,
+        false,
+      )
+    ) {
+      serverArgs.push('-check-docstrings');
+    }
+
     if (this.attachDebugger) {
       serverArgs.push('--attach-debugger-on-startup');
     }
@@ -334,36 +344,6 @@ export class MojoLSPManager extends DisposableContext {
         } else {
           return next(method, param);
         }
-      },
-      async handleDiagnostics(uri, diagnostics, next) {
-        if (
-          config.get<boolean>(
-            'lsp.suppress.diagnostics.in.docstring',
-            /*workspaceFolder=*/ undefined,
-            false,
-          )
-        ) {
-          const document = await vscode.workspace.openTextDocument(uri);
-          const foldingRanges = await vscode.commands.executeCommand<
-            vscode.FoldingRange[]
-          >('vscode.executeFoldingRangeProvider', uri);
-          const docstringRanges = foldingRanges.filter((r) => {
-            return document.lineAt(r.start).text.trimStart().startsWith('"""');
-          });
-          diagnostics = diagnostics.filter((d) => {
-            for (let index = 0; index < docstringRanges.length; index++) {
-              const range = docstringRanges[index];
-              if (
-                d.range.start.line > range.start &&
-                d.range.end.line < range.end
-              ) {
-                return false;
-              }
-            }
-            return true;
-          });
-        }
-        next(uri, diagnostics);
       },
     };
 
