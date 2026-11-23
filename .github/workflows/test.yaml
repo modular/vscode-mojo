@@ -72,7 +72,7 @@ jobs:
 
       - name: Setup Pixi
         if: matrix.env == 'pixi'
-        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94
         with:
           pixi-version: v0.63.2
           run-install: false
@@ -84,9 +84,9 @@ jobs:
 
       - name: Setup uv
         if: matrix.env == 'uv'
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
         with:
-          version: 0.11.23
+          version: 0.13.4
 
       - name: Initialize uv workspace
         if: matrix.env == 'uv'
