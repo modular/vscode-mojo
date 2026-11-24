@@ -362,20 +362,19 @@ export class PythonEnvironmentManager extends DisposableContext {
     // extension because it considers Conda and wheel-based installs to be the
     // same, when we need to differentiate them.
     this.logger.info(`Found Python environment at ${envPath.path}`, env);
-    if (await this.envHasModularCfg(env)) {
+    if (await this.hasPyvenvCfg(env.executable.sysPrefix)) {
       this.logger.info(
-        `Python environment '${envPath.path}' appears to be Conda-like; using modular.cfg method.`,
-      );
-      return this.createSDKFromHomePath(
-        SDKKind.Environment,
-        path.join(env.executable.sysPrefix, 'share', 'max'),
-        env.executable.sysPrefix,
-      );
-    } else {
-      this.logger.info(
-        `Python environment '${envPath.path}' does not have a modular.cfg file; assuming wheel installation.`,
+        `Python environment '${envPath.path}' has a pyvenv.cfg; assuming wheel installation.`,
       );
       return this.createSDKFromWheelEnv(env);
+    } else {
+      this.logger.info(
+        `Python environment '${envPath.path}' does not have a pyvenv.cfg, assuming Conda installation`,
+      );
+      return this.createSDKFromCondaLayout(
+        SDKKind.Environment,
+        env.executable.sysPrefix,
+      );
     }
   }
 
@@ -397,10 +396,8 @@ export class PythonEnvironmentManager extends DisposableContext {
     await vscode.window.showErrorMessage(message);
   }
 
-  private async envHasModularCfg(env: ResolvedEnvironment): Promise<boolean> {
-    return fileExists(
-      path.join(env.executable.sysPrefix, 'share', 'max', 'modular.cfg'),
-    );
+  private async hasPyvenvCfg(folder: string): Promise<boolean> {
+    return fileExists(path.join(folder, 'pyvenv.cfg'));
   }
 
   private async createSDKFromWheelEnv(
@@ -432,6 +429,33 @@ export class PythonEnvironmentManager extends DisposableContext {
       'modular',
       'lib',
     );
+
+    return this.createSDKFromPackageRoots(binPath, libPath, kind, 'lldb-dap');
+  }
+
+  private async createSDKFromCondaLayout(
+    kind: SDKKind,
+    sysPrefix: string,
+  ): Promise<SDK | undefined> {
+    const binPath = path.join(sysPrefix, 'bin');
+    const libPath = path.join(sysPrefix, 'lib');
+    // Conda/pixi packages ship the DAP binary as `mojo-lldb-dap`, not `lldb-dap`.
+    return this.createSDKFromPackageRoots(
+      binPath,
+      libPath,
+      kind,
+      'mojo-lldb-dap',
+      sysPrefix,
+    );
+  }
+
+  private async createSDKFromPackageRoots(
+    binPath: string,
+    libPath: string,
+    kind: SDKKind,
+    dapName: string,
+    condaPrefix?: string,
+  ): Promise<SDK | undefined> {
     // helper to pull required files/folders out of the environment
     const retrievePath = async (target: string) => {
       this.logger.debug(`Retrieving tool path '${target}'.`);
@@ -453,7 +477,8 @@ export class PythonEnvironmentManager extends DisposableContext {
       path.join(libPath, `libMojoLLDB.${libExt}`),
     );
     const mblackPath = await retrievePath(path.join(binPath, 'mblack'));
-    const dapPath = await retrievePath(path.join(binPath, 'lldb-dap'));
+    // file path differs in conda vs wheels
+    const dapPath = await retrievePath(path.join(binPath, dapName));
     const visualizerPath = await retrievePath(
       path.join(libPath, 'lldb-visualizers'),
     );
@@ -479,10 +504,8 @@ export class PythonEnvironmentManager extends DisposableContext {
 
     // We don't know the version intrinsically so we need to invoke it ourselves.
     const versionResult = await exec(`"${mojoPath}" --version`);
-    return new SDK(
-      this.logger,
-      kind,
-      versionResult.stdout,
+    const args = [this.logger, kind, versionResult.stdout] as const;
+    const tools = [
       lspPath,
       mblackPath,
       lldbPluginPath,
@@ -490,7 +513,18 @@ export class PythonEnvironmentManager extends DisposableContext {
       mojoPath,
       visualizerPath,
       lldbPath,
-    );
+    ] as const;
+    if (condaPrefix) {
+      // Conda/pixi installs need MODULAR_HOME/CONDA_PREFIX set so that mojo
+      // can locate its stdlib and the debugger wrappers work.
+      return new HomeSDK(
+        ...args,
+        path.join(condaPrefix, 'share', 'max'),
+        ...tools,
+        condaPrefix,
+      );
+    }
+    return new SDK(...args, ...tools);
   }
 
   /// Attempts to create a SDK from a home path. Returns undefined if creation failed.
@@ -593,11 +627,9 @@ export class PythonEnvironmentManager extends DisposableContext {
     }
 
     // Try the conda/pixi layout first: <override>/share/max/modular.cfg
-    const homePath = path.join(overridePath, 'share', 'max');
-    if (await fileExists(path.join(homePath, 'modular.cfg'))) {
-      const sdk = await this.createSDKFromHomePath(
+    if (!(await this.hasPyvenvCfg(overridePath))) {
+      const sdk = await this.createSDKFromCondaLayout(
         SDKKind.Custom,
-        homePath,
         overridePath,
       );
       this.overridePathState = sdk ? 'valid' : 'invalid';
@@ -753,13 +785,12 @@ export class PythonEnvironmentManager extends DisposableContext {
 
       for (const envName of envNames) {
         const envPath = path.join(envsRoot, envName);
-        const cfgPath = path.join(envPath, 'share', 'max', 'modular.cfg');
-        if (!(await fileExists(cfgPath))) {
+        const mojoPath = path.join(envPath, 'bin', 'mojo');
+        if (!(await fileExists(mojoPath))) {
           continue;
         }
-        const sdk = await this.createSDKFromHomePath(
+        const sdk = await this.createSDKFromCondaLayout(
           SDKKind.Environment,
-          path.join(envPath, 'share', 'max'),
           envPath,
         );
         if (!sdk) {
@@ -774,7 +805,7 @@ export class PythonEnvironmentManager extends DisposableContext {
       }
     }
 
-    this.logger.debug('No workspace pixi env with share/max/modular.cfg found');
+    this.logger.debug('No workspace pixi env with bin/mojo found');
     return undefined;
   }
 
