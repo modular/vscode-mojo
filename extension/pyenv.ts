@@ -430,7 +430,7 @@ export class PythonEnvironmentManager extends DisposableContext {
       'lib',
     );
 
-    return this.createSDKFromPackageRoots(binPath, libPath, kind);
+    return this.createSDKFromPackageRoots(binPath, libPath, kind, 'lldb-dap');
   }
 
   private async createSDKFromCondaLayout(
@@ -439,13 +439,20 @@ export class PythonEnvironmentManager extends DisposableContext {
   ): Promise<SDK | undefined> {
     const binPath = path.join(sysPrefix, 'bin');
     const libPath = path.join(sysPrefix, 'lib');
-    return this.createSDKFromPackageRoots(binPath, libPath, kind);
+    // Conda/pixi packages ship the DAP binary as `mojo-lldb-dap`, not `lldb-dap`.
+    return this.createSDKFromPackageRoots(
+      binPath,
+      libPath,
+      kind,
+      'mojo-lldb-dap',
+    );
   }
 
   private async createSDKFromPackageRoots(
     binPath: string,
     libPath: string,
     kind: SDKKind,
+    dapName: string,
   ): Promise<SDK | undefined> {
     // helper to pull required files/folders out of the environment
     const retrievePath = async (target: string) => {
@@ -468,7 +475,8 @@ export class PythonEnvironmentManager extends DisposableContext {
       path.join(libPath, `libMojoLLDB.${libExt}`),
     );
     const mblackPath = await retrievePath(path.join(binPath, 'mblack'));
-    const dapPath = await retrievePath(path.join(binPath, 'lldb-dap'));
+    // file path differs in conda vs wheels
+    const dapPath = await retrievePath(path.join(binPath, dapName));
     const visualizerPath = await retrievePath(
       path.join(libPath, 'lldb-visualizers'),
     );
@@ -608,7 +616,7 @@ export class PythonEnvironmentManager extends DisposableContext {
     }
 
     // Try the conda/pixi layout first: <override>/share/max/modular.cfg
-    if (!this.hasPyvenvCfg(overridePath)) {
+    if (!(await this.hasPyvenvCfg(overridePath))) {
       const sdk = await this.createSDKFromCondaLayout(
         SDKKind.Custom,
         overridePath,
