@@ -445,6 +445,7 @@ export class PythonEnvironmentManager extends DisposableContext {
       libPath,
       kind,
       'mojo-lldb-dap',
+      sysPrefix,
     );
   }
 
@@ -453,6 +454,7 @@ export class PythonEnvironmentManager extends DisposableContext {
     libPath: string,
     kind: SDKKind,
     dapName: string,
+    condaPrefix?: string,
   ): Promise<SDK | undefined> {
     // helper to pull required files/folders out of the environment
     const retrievePath = async (target: string) => {
@@ -502,10 +504,8 @@ export class PythonEnvironmentManager extends DisposableContext {
 
     // We don't know the version intrinsically so we need to invoke it ourselves.
     const versionResult = await exec(`"${mojoPath}" --version`);
-    return new SDK(
-      this.logger,
-      kind,
-      versionResult.stdout,
+    const args = [this.logger, kind, versionResult.stdout] as const;
+    const tools = [
       lspPath,
       mblackPath,
       lldbPluginPath,
@@ -513,7 +513,18 @@ export class PythonEnvironmentManager extends DisposableContext {
       mojoPath,
       visualizerPath,
       lldbPath,
-    );
+    ] as const;
+    if (condaPrefix) {
+      // Conda/pixi installs need MODULAR_HOME/CONDA_PREFIX set so that mojo
+      // can locate its stdlib and the debugger wrappers work.
+      return new HomeSDK(
+        ...args,
+        path.join(condaPrefix, 'share', 'max'),
+        ...tools,
+        condaPrefix,
+      );
+    }
+    return new SDK(...args, ...tools);
   }
 
   /// Attempts to create a SDK from a home path. Returns undefined if creation failed.

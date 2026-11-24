@@ -12,12 +12,14 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from 'assert';
-import * as fs from 'fs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import * as ini from 'ini';
 import { extension } from './extension';
 import { SDKKind } from './pyenv';
+
+const execAsync = promisify(exec);
 
 suite('pyenv', function () {
   test('should detect Pixi environments', async function () {
@@ -26,16 +28,13 @@ suite('pyenv', function () {
     assert.ok(sdk);
     assert.strictEqual(sdk.kind, SDKKind.Environment);
 
-    // Rather than hardcode a version string that would need updating on
-    // every pixi.lock refresh, read the version from the same
-    // modular.cfg file the extension parses. Asserts our detection
-    // reads what pixi installed.
-    const workspaceFolder = vscode.workspace.workspaceFolders![0].uri.fsPath;
-    const cfgPath = path.join(
-      workspaceFolder,
-      '.pixi/envs/default/share/max/modular.cfg',
+    // sdk.version comes from invoking `mojo --version`. Reproduce the same
+    // call to assert detection reports exactly what the installed mojo prints.
+    const mojoPath = path.join(
+      vscode.workspace.workspaceFolders![0].uri.fsPath,
+      '.pixi/envs/default/bin/mojo',
     );
-    const cfg = ini.parse(await fs.promises.readFile(cfgPath, 'utf8'));
-    assert.strictEqual(sdk.version, cfg.max.version);
+    const { stdout } = await execAsync(`"${mojoPath}" --version`);
+    assert.strictEqual(sdk.version, stdout);
   });
 });
